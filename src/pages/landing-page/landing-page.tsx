@@ -1,5 +1,6 @@
 import "./landing-page.css";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 type Category = {
     label: string;
@@ -17,32 +18,6 @@ const categories: Category[] = [
 export default function Home() {
     return (
         <div className="page">
-            {/* NAVBAR */}
-            <header className="navbar">
-                <div className="navbar__inner container">
-                    <div className="brand">
-                        <div className="brand__mark" aria-hidden="true">▦</div>
-                        <div className="brand__name">Eventify</div>
-                    </div>
-
-                    <nav className="nav">
-                        <a className="nav__link nav__link--active" href="#beranda">Beranda</a>
-                        <a className="nav__link" href="#paket">Paket Wisata</a>
-                        <a className="nav__link" href="#penginapan">Penginapan</a>
-                        <a className="nav__link" href="#tentang">Tentang Kami</a>
-                    </nav>
-
-                    <div className="nav__actions">
-                        <Link to="/login" className="btn btn--ghost">
-                            Masuk
-                        </Link>
-                        <Link to="/register" className="btn btn--primary">
-                            Daftar
-                        </Link>
-                    </div>
-                </div>
-            </header>
-
             {/* HERO */}
             <main id="beranda" className="hero">
                 <div className="hero__inner container">
@@ -170,60 +145,6 @@ export default function Home() {
                     </div>
                 </div>
             </section>
-
-            {/* FOOTER */}
-            <footer className="footer">
-                <div className="footer__inner container">
-                    <div className="footer__col">
-                        <div className="footer__title">Jam Operasional</div>
-                        <div className="footer__row">
-                            <span>Senin</span>
-                            <span>06.00 - 23.59 WIB</span>
-                        </div>
-                        <div className="footer__row">
-                            <span>Selasa - Jumat</span>
-                            <span>07.00 - 23.59 WIB</span>
-                        </div>
-                        <div className="footer__row">
-                            <span>Sabtu, Minggu</span>
-                            <span>05.00 - 23.59 WIB</span>
-                        </div>
-                    </div>
-
-                    <div className="footer__col footer__col--center">
-                        <div className="footer__brand">Desa Wisata Manud Jaya</div>
-                        <div className="footer__desc">
-                            Tempat yang cocok untuk menikmati suasana pedesaan di Yogyakarta.
-                        </div>
-                        <div className="footer__quote">“Sejuk dan Tentram”</div>
-                    </div>
-
-                    <div className="footer__col footer__col--right">
-                        <div className="footer__title">Kontak</div>
-                        <div className="footer__contact">
-                            <div className="footer__contactItem">📞 0813 1234 5678</div>
-                            <div className="footer__contactItem">📍 @desawisata_manudjaya</div>
-                            <div className="footer__contactItem">✉️ manudjaya.desawisata@gmail.com</div>
-                        </div>
-
-                        <div className="map">
-                            <div className="map">
-                                <iframe
-                                    className="map__iframe"
-                                    title="Lokasi UI Salemba"
-                                    loading="lazy"
-                                    referrerPolicy="no-referrer-when-downgrade"
-                                    src="https://www.google.com/maps?q=Universitas%20Indonesia%20Salemba&output=embed"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="footer__bottom container">
-                    <div className="footer__line" />
-                </div>
-            </footer>
         </div>
     );
 }

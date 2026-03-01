@@ -400,7 +400,7 @@ body {
   font-weight: 700;
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE
 @media (max-width: 900px){
   .eventGrid{
     grid-template-columns: repeat(2, minmax(0,1fr));
@@ -411,7 +411,7 @@ body {
   .eventGrid{
     grid-template-columns: 1fr;
   }
-}
+} */
 
 /* FOOTER */
 .footer {
@@ -527,5 +527,119 @@ body {
 
     .footer__col--center {
         text-align: left;
+    }
+}
+
+/* AUTH (Logged-in Navbar) */
+.navAuth{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.navIconBtn{
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: rgba(255, 255, 255, .92);
+    padding: 6px 8px;
+    border-radius: 10px;
+    min-width: 64px;
+}
+
+.navIconBtn:hover{
+    background: rgba(255,255,255,.10);
+}
+
+.navIconBtn__icon{
+    font-size: 16px;
+    line-height: 1;
+}
+
+.navIconBtn__label{
+    font-size: 10px;
+    font-weight: 700;
+    opacity: .9;
+}
+
+/* Profile dropdown */
+.profileMenu{
+    position: relative;
+}
+
+.profileBtn{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, .92);
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 10px;
+}
+
+.profileBtn:hover{
+    background: rgba(255,255,255,.10);
+}
+
+.profileIcon{
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,.14);
+}
+
+.profileCaret{
+    font-size: 12px;
+    opacity: .9;
+}
+
+.profileDropdown{
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 190px;
+    background: #ffffff;
+    border: 1px solid rgba(17,24,39,.10);
+    border-radius: 10px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.18);
+    overflow: hidden;
+    z-index: 120;
+}
+
+.profileItem{
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border: 0;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    color: #111827;
+}
+
+.profileItem:hover{
+    background: rgba(17,24,39,.06);
+}
+
+.profileItem--danger{
+    color: #b91c1c;
+}
+
+/* Make navbar actions wrap nicely on small screens */
+@media (max-width: 680px){
+    .navAuth{
+        gap: 6px;
+    }
+    .navIconBtn{
+        min-width: 56px;
+        padding: 6px 6px;
     }
 }
