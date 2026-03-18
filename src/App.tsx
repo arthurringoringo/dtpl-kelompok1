@@ -7,7 +7,11 @@ import AccountLayout from "./pages/account/account-layout";
 import ProfileInfo from "./pages/account/profile-info";
 import ChangeEmail from "./pages/account/change-email";
 import ChangePassword from "./pages/account/change-password";
+import PaketWisataPage from "./pages/paket-wisata/paket-wisata";
+import PaketDetailPage from "./pages/paket-detail/paket-detail";
+import PenginapanPage from "./pages/penginapan/penginapan";
 
+// ...
 export default function App() {
   return (
     <BrowserRouter>
@@ -15,6 +19,9 @@ export default function App() {
         {/* pages WITH navbar+footer */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/paket" element={<PaketWisataPage />} />
+<Route path="/paket-wisata/:id" element={<PaketDetailPage />} />
+<Route path="/penginapan" element={<PenginapanPage />} />
 
           <Route path="/account" element={<AccountLayout />}>
             <Route index element={<ProfileInfo />} />

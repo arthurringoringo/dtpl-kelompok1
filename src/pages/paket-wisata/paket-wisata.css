@@ -1,0 +1,201 @@
+.paketPage{
+  width: 100%;
+  background: #ffffff;
+}
+
+/* Banner abu-abu besar */
+.paketHero{
+  height: 230px;
+  background: #7b7a80;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.paketHero__title{
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: .8px;
+  color: #111827;
+  font-size: 18px;
+}
+
+.paketHero__underline{
+  width: 220px;
+  height: 2px;
+  background: rgba(17,24,39,.55);
+  margin: 10px auto 0;
+}
+
+/* Section content */
+.paketSection{
+  padding: 46px 0 60px;
+}
+
+.paketSection{
+  padding: 46px 0 60px;
+}
+
+.paketGrid{
+  width: min(1120px, calc(100% - 72px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, 500px);
+  justify-content: center;
+  gap: 40px 44px;
+}
+
+.paketCard{
+  width: 500px;
+  min-height: 212px;
+  border: 2px solid rgba(17,24,39,.45);
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: 62% 38%;
+  padding: 14px;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.paketCard__thumb{
+  background: #bdbdbd;
+  position: relative;
+  border-radius: 6px;
+  min-height: 182px;
+}
+
+.paketCard__fav{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: #2c2b3e;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.10);
+}
+
+.paketCard__body{
+  padding: 2px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.paketCard__paketNo{
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.paketCard__title{
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.paketCard__line{
+  font-size: 14px;
+  font-weight: 800;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.paketCard__lineMuted{
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.paketCard__bottom{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: auto;
+}
+
+.paketCard__price{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1f7a2f;
+  white-space: nowrap;
+}
+
+.paketCard__priceIcon{
+  font-size: 14px;
+}
+
+.paketCard__btn{
+  border: 0;
+  background: #2f2d57;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.paketCard__btn:hover{
+  filter: brightness(1.05);
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  .paketGrid{
+    grid-template-columns: 1fr;
+    width: min(560px, calc(100% - 40px));
+  }
+
+  .paketCard{
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px){
+  .paketCard{
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .paketCard__thumb{
+    min-height: 180px;
+  }
+
+  .paketCard__body{
+    padding-top: 4px;
+  }
+
+  .paketCard__title{
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .paketCard__bottom{
+    gap: 12px;
+  }
+
+  .paketCard__btn{
+    align-self: flex-start;
+  }
+}

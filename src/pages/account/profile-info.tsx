@@ -18,11 +18,11 @@ export default function ProfileInfo() {
       <h2>Informasi Akun</h2>
 
       <label>Nama Lengkap</label>
-      <input value={name} onChange={e => setName(e.target.value)} />
+      <input value={name} onChange={(e) => setName(e.target.value)} />
 
       <label>Nomor Telepon</label>
-      <input value={phone} onChange={e => setPhone(e.target.value)} />
-
+      <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+      <br />
       <button onClick={save}>Simpan Profil Saya</button>
     </>
   );
