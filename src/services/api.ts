@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api";
+const API_BASE_URL = "https://manudjaya-api.arthurringo.com";
 
 type ApiError = {
   error?: string;
