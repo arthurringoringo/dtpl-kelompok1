@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSessionUser, updateUser } from "../../utils/auth";
+import { getSessionUser, updateUser, setSession } from "../../utils/auth";
 
 export default function ChangePassword() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getSessionUser>>>(null);
@@ -32,7 +32,10 @@ export default function ChangePassword() {
       return;
     }
 
-    updateUser({ ...user, password: newPw });
+    const updated = { ...user, password: newPw };
+    updateUser(updated);
+    setSession(updated);
+    setUser(updated);
     alert("Kata sandi berhasil diubah");
   };
 

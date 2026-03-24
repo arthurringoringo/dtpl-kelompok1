@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSessionUser, updateUser } from "../../utils/auth";
+import { getSessionUser, updateUser, setSession } from "../../utils/auth";
 
 export default function ProfileInfo() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getSessionUser>>>(null);
@@ -24,7 +24,10 @@ export default function ProfileInfo() {
   if (!user) return <p>Unauthorized</p>;
 
   const save = () => {
-    updateUser({ ...user, name, phone });
+    const updated = { ...user, name, phone };
+    updateUser(updated);
+    setSession(updated);
+    setUser(updated);
     alert("Profil berhasil disimpan");
   };
 

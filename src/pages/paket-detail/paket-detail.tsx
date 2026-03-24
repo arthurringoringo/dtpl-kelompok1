@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { destinations } from "../../data/destinations";
 import Reveal from "../../components/reveal";
 import "./paket-detail.css";
 import logo from "../../assets/logo.png";
+import { getSession } from "../../utils/auth";
 
 type VisitorForm = {
   fullName: string;
@@ -48,10 +49,12 @@ function formatReceiptDateTime(date: Date) {
 
 export default function PaketDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const destination = destinations.find((item) => item.id === Number(id));
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const [orderId] = useState(() => `${Date.now()}`);
   const [bookingTime] = useState(() => new Date());
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -83,6 +86,10 @@ export default function PaketDetailPage() {
   const grandTotal = useMemo(() => total + tax, [total]);
 
   const openModal = () => {
+    if (!getSession()) {
+      setShowAuthPopup(true);
+      return;
+    }
     setStep(1);
     setQty(1);
     setForm({
@@ -236,6 +243,29 @@ export default function PaketDetailPage() {
           </div>
         </section>
       </main>
+
+      {showAuthPopup && (
+        <div className="authPopup__overlay" onClick={() => setShowAuthPopup(false)}>
+          <div className="authPopup" onClick={(e) => e.stopPropagation()}>
+            <span className="authPopup__icon">🔒</span>
+            <p className="authPopup__text">Anda harus login terlebih dahulu</p>
+            <div className="authPopup__actions">
+              <button
+                className="authPopup__btnLogin"
+                onClick={() => navigate("/login")}
+              >
+                Login Sekarang
+              </button>
+              <button
+                className="authPopup__btnCancel"
+                onClick={() => setShowAuthPopup(false)}
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="bookingModal__overlay" onClick={closeModal}>

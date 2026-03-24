@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSessionUser, updateUser } from "../../utils/auth";
+import { getSessionUser, updateUser, setSession } from "../../utils/auth";
 
 export default function ChangeEmail() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getSessionUser>>>(null);
@@ -27,8 +27,11 @@ export default function ChangeEmail() {
       return;
     }
 
-    updateUser({ ...user, email });
-    alert("Email berhasil diubah (login ulang)");
+    const updated = { ...user, email };
+    updateUser(updated);
+    setSession(updated);
+    setUser(updated);
+    alert("Email berhasil diubah");
   };
 
   return (
