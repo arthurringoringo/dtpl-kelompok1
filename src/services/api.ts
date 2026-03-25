@@ -106,7 +106,19 @@ export type DestinationDetail = {
 /* =========================
    AUTH API
 ========================= */
-
+export async function updateProfile(payload?: {
+  full_name?: string;
+  email?: string;
+  phone_number?: string;
+  password?: string;
+}) {
+  return apiFetch<UserResponse>("/me", {
+    method: "PATCH",
+    body: JSON.stringify({
+      data: payload || {},
+    }),
+  });
+}
 // REGISTER
 export async function registerUser(payload: {
   full_name: string;

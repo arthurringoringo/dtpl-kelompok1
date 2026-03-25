@@ -225,7 +225,7 @@ export default function PaketDetailPage() {
                     type="button"
                     aria-label="Favorit"
                   >
-                    ☆
+                    ♡
                   </button>
                 </Reveal>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getSessionUser, updateUser, setSession } from "../../utils/auth";
+import { getSessionUser, setSession } from "../../utils/auth";
+import { updateProfile } from "../../services/api";
 
 export default function ChangeEmail() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getSessionUser>>>(null);
@@ -21,17 +22,27 @@ export default function ChangeEmail() {
 
   if (!user) return <p>Unauthorized</p>;
 
-  const save = () => {
+  const save = async () => {
     if (email !== confirm) {
       alert("Email tidak sama");
       return;
     }
 
-    const updated = { ...user, email };
-    updateUser(updated);
-    setSession(updated);
-    setUser(updated);
-    alert("Email berhasil diubah");
+    try {
+      const updated = await updateProfile({ email });
+      setSession(updated);
+      setUser({
+        name: updated.full_name ?? updated.name ?? user.name,
+        email: updated.email,
+        password: user.password,
+        phone: updated.phone_number ?? updated.phone ?? user.phone,
+      });
+      setEmail("");
+      setConfirm("");
+      alert("Email berhasil diubah");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal mengubah email");
+    }
   };
 
   return (

@@ -2,6 +2,7 @@ import "./landing-page.css";
 import Reveal from "../../components/reveal";
 import { destinations } from "../../data/destinations";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 type Category = {
   label: string;
@@ -42,6 +43,7 @@ const categories: Category[] = [
 ];
 
 export default function Home() {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<string>("");
   const filteredDestinations = useMemo(() => {
     if (!activeCategory) {
@@ -102,7 +104,10 @@ export default function Home() {
               <button
                 className={`cat ${activeCategory === c.label ? "cat--active" : ""}`}
                 type="button"
-                onClick={() => setActiveCategory(c.label)}
+                onClick={() => {
+                  setActiveCategory(c.label);
+                  navigate(`/paket?category=${encodeURIComponent(c.label)}`);
+                }}
               >
                 <div className="cat__circle" aria-hidden="true">
                   <img
@@ -147,7 +152,7 @@ export default function Home() {
                         alt={item.name}
                         className="eventCard__imageTag"
                       />
-                      <span className="eventCard__fav">★</span>
+                      <span className="eventCard__fav">♡</span>
                     </div>
 
                     <div className="eventCard__body">

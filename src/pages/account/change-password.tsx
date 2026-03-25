@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getSessionUser, updateUser, setSession } from "../../utils/auth";
+import { getSessionUser, setSession } from "../../utils/auth";
+import { updateProfile } from "../../services/api";
 
 export default function ChangePassword() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getSessionUser>>>(null);
@@ -22,7 +23,7 @@ export default function ChangePassword() {
 
   if (!user) return <p>Unauthorized</p>;
 
-  const save = () => {
+  const save = async () => {
     if (user.password && oldPw !== user.password) {
       alert("Kata sandi lama salah");
       return;
@@ -32,11 +33,22 @@ export default function ChangePassword() {
       return;
     }
 
-    const updated = { ...user, password: newPw };
-    updateUser(updated);
-    setSession(updated);
-    setUser(updated);
-    alert("Kata sandi berhasil diubah");
+    try {
+      const updated = await updateProfile({ password: newPw });
+      setSession({ ...updated, password: newPw });
+      setUser({
+        name: updated.full_name ?? updated.name ?? user.name,
+        email: updated.email,
+        password: newPw,
+        phone: updated.phone_number ?? updated.phone ?? user.phone,
+      });
+      setOldPw("");
+      setNewPw("");
+      setConfirm("");
+      alert("Kata sandi berhasil diubah");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal mengubah kata sandi");
+    }
   };
 
   return (

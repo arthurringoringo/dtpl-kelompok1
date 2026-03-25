@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
 import { destinations } from "../../data/destinations";
 import Reveal from "../../components/reveal";
 import "./paket-wisata.css";
@@ -8,6 +9,17 @@ function formatRupiah(value: string) {
 }
 
 export default function PaketWisataPage() {
+  const [searchParams] = useSearchParams();
+  const activeCategory = searchParams.get("category") ?? "";
+
+  const filteredDestinations = useMemo(() => {
+    if (!activeCategory) {
+      return destinations;
+    }
+
+    return destinations.filter((item) => item.category.name === activeCategory);
+  }, [activeCategory]);
+
   return (
     <div className="paketPage">
       <section className="paketHero">
@@ -17,7 +29,7 @@ export default function PaketWisataPage() {
 
       <section className="paketSection">
         <div className="paketGrid">
-          {destinations.map((item, index) => (
+          {filteredDestinations.map((item, index) => (
             <Reveal key={item.id} delay={index * 100}>
               <article className="paketCard">
               <div className="paketCard__thumb">
@@ -31,7 +43,7 @@ export default function PaketWisataPage() {
                   type="button"
                   aria-label="favorit"
                 >
-                  ☆
+                  ♡
                 </button>
               </div>
 

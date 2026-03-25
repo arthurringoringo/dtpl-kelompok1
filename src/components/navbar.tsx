@@ -91,11 +91,11 @@ export default function Navbar() {
                 <span className="navIconBtn__label">Tickets</span>
               </button>
 
-              <button className="navIconBtn" type="button" title="Interested">
+              <button className="navIconBtn" type="button" title="Wishlist">
                 <span className="navIconBtn__icon" aria-hidden="true">
-                  ⭐
+                  ❤️
                 </span>
-                <span className="navIconBtn__label">Interested</span>
+                <span className="navIconBtn__label">Wishlist</span>
               </button>
 
               <div className="profileMenu" ref={menuRef}>
