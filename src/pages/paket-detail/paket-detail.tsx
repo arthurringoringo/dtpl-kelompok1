@@ -1,10 +1,14 @@
-import { useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { destinations } from "../../data/destinations";
+import { useMemo, useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { getDestinationById } from "../../services/api";
+import type { DestinationDetail } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
 import Reveal from "../../components/reveal";
 import "./paket-detail.css";
 import logo from "../../assets/logo.png";
-import { getSession } from "../../utils/auth";
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop";
 
 type VisitorForm = {
   fullName: string;
@@ -24,6 +28,7 @@ function formatDateIndonesia(dateString: string) {
     year: "numeric",
   });
 }
+
 function formatReceiptDate(date: Date) {
   return date.toLocaleDateString("id-ID", {
     day: "numeric",
@@ -50,11 +55,14 @@ function formatReceiptDateTime(date: Date) {
 export default function PaketDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const destination = destinations.find((item) => item.id === Number(id));
+  const { isLoggedIn } = useAuth();
+
+  const [destination, setDestination] = useState<DestinationDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const [orderId] = useState(() => `${Date.now()}`);
   const [bookingTime] = useState(() => new Date());
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -65,38 +73,31 @@ export default function PaketDetailPage() {
     phone: "",
   });
 
-  if (!destination) {
-    return (
-      <div className="page">
-        <main className="paketDetail">
-          <section className="paketDetail__content container">
-            <h1 className="paketDetail__title">Data paket tidak ditemukan</h1>
-          </section>
-        </main>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    getDestinationById(id)
+      .then((data) => {
+        setDestination(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setNotFound(true);
+        setLoading(false);
+      });
+  }, [id]);
 
   const ticketName = "Tiket Standard";
-  const eventTitle = destination.name;
-  const ticketPrice = Number(destination.price);
+  const ticketPrice = Number(destination?.price ?? 0);
   const tax = 20000;
 
   const total = useMemo(() => qty * ticketPrice, [qty, ticketPrice]);
   const grandTotal = useMemo(() => total + tax, [total]);
 
   const openModal = () => {
-    if (!getSession()) {
-      setShowAuthPopup(true);
-      return;
-    }
     setStep(1);
     setQty(1);
-    setForm({
-      fullName: "",
-      email: "",
-      phone: "",
-    });
+    setForm({ fullName: "", email: "", phone: "" });
     setIsModalOpen(true);
     document.body.style.overflow = "hidden";
   };
@@ -111,13 +112,8 @@ export default function PaketDetailPage() {
     document.body.style.overflow = "auto";
   };
 
-  const decreaseQty = () => {
-    setQty((prev) => Math.max(0, prev - 1));
-  };
-
-  const increaseQty = () => {
-    setQty((prev) => prev + 1);
-  };
+  const decreaseQty = () => setQty((prev) => Math.max(0, prev - 1));
+  const increaseQty = () => setQty((prev) => prev + 1);
 
   const handleNextFromStep1 = () => {
     if (qty < 1) return;
@@ -137,12 +133,38 @@ export default function PaketDetailPage() {
     setIsReceiptOpen(true);
   };
 
+  if (loading) {
+    return (
+      <div className="page">
+        <main className="paketDetail">
+          <section className="paketDetail__content container">
+            <p style={{ padding: "40px 0", color: "#6b7280" }}>Memuat...</p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (notFound || !destination) {
+    return (
+      <div className="page">
+        <main className="paketDetail">
+          <section className="paketDetail__content container">
+            <h1 className="paketDetail__title">Data paket tidak ditemukan</h1>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  const categoryName = destination.category?.name ?? destination.category_name ?? "";
+
   return (
     <div className="page">
       <main className="paketDetail">
         <section className="paketDetail__hero">
           <img
-            src={destination.image_url}
+            src={destination.image_url ?? FALLBACK_IMAGE}
             alt={destination.name}
             className="paketDetail__heroImg"
           />
@@ -156,6 +178,12 @@ export default function PaketDetailPage() {
                   <h1 className="paketDetail__title">{destination.name}</h1>
                 </Reveal>
 
+                {categoryName && (
+                  <Reveal>
+                    <span className="paketDetail__category">{categoryName}</span>
+                  </Reveal>
+                )}
+
                 <Reveal>
                   <section className="paketDetail__section">
                     <h2 className="paketDetail__heading">Date and Time</h2>
@@ -165,48 +193,54 @@ export default function PaketDetailPage() {
                       <span>{formatDateIndonesia(destination.date)}</span>
                     </div>
 
-                    <div className="paketDetail__infoItem">
-                      <span className="paketDetail__icon">🕒</span>
-                      <span>
-                        {destination.start_time} - {destination.end_time}
-                      </span>
-                    </div>
+                    {destination.start_time && destination.end_time && (
+                      <div className="paketDetail__infoItem">
+                        <span className="paketDetail__icon">🕒</span>
+                        <span>
+                          {destination.start_time} - {destination.end_time}
+                        </span>
+                      </div>
+                    )}
                   </section>
                 </Reveal>
 
-                <Reveal>
-                  <section className="paketDetail__section">
-                  <h2 className="paketDetail__heading">Location 📍</h2>
+                {destination.latitude && destination.longitude && (
+                  <Reveal>
+                    <section className="paketDetail__section">
+                      <h2 className="paketDetail__heading">Location 📍</h2>
 
-                    <div className="paketDetail__map">
-                      <iframe
-                        title="Lokasi Destinasi"
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        allowFullScreen
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps?q=${destination.latitude},${destination.longitude}&z=15&output=embed`}
-                      />
-                    </div>
-                  </section>
-                </Reveal>
+                      <div className="paketDetail__map">
+                        <iframe
+                          title="Lokasi Destinasi"
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.google.com/maps?q=${destination.latitude},${destination.longitude}&z=15&output=embed`}
+                        />
+                      </div>
+                    </section>
+                  </Reveal>
+                )}
 
-                <Reveal>
-                  <section className="paketDetail__section">
-                    <h2 className="paketDetail__heading">Ticket Information</h2>
+                {destination.ticket_type && (
+                  <Reveal>
+                    <section className="paketDetail__section">
+                      <h2 className="paketDetail__heading">Ticket Information</h2>
 
-                    <div className="paketDetail__infoItem">
-                      <span className="paketDetail__icon">🎟</span>
-                      <span>
-                        {destination.ticket_type === "price_per_ticket"
-                          ? `Price / ticket: ${formatRupiah(destination.price)}`
-                          : destination.ticket_type}
-                      </span>
-                    </div>
-                  </section>
-                </Reveal>
+                      <div className="paketDetail__infoItem">
+                        <span className="paketDetail__icon">🎟</span>
+                        <span>
+                          {destination.ticket_type === "price_per_ticket"
+                            ? `Price / ticket: ${formatRupiah(destination.price ?? 0)}`
+                            : destination.ticket_type}
+                        </span>
+                      </div>
+                    </section>
+                  </Reveal>
+                )}
 
                 <Reveal>
                   <section className="paketDetail__section">
@@ -230,42 +264,34 @@ export default function PaketDetailPage() {
                 </Reveal>
 
                 <Reveal variant="right">
-                  <button
-                    type="button"
-                    className="paketDetail__orderBtn"
-                    onClick={openModal}
-                  >
-                    🎟 Pesan Sekarang
-                  </button>
+                  {isLoggedIn ? (
+                    <button
+                      type="button"
+                      className="paketDetail__orderBtn"
+                      onClick={openModal}
+                    >
+                      🎟 Pesan Sekarang
+                    </button>
+                  ) : (
+                    <div className="paketDetail__orderWrap">
+                      <button
+                        type="button"
+                        className="paketDetail__orderBtn paketDetail__orderBtn--disabled"
+                        disabled
+                      >
+                        🎟 Pesan Sekarang
+                      </button>
+                      <p className="paketDetail__loginNote">
+                        <Link to="/login">Masuk</Link> untuk memesan tiket ini.
+                      </p>
+                    </div>
+                  )}
                 </Reveal>
               </aside>
             </div>
           </div>
         </section>
       </main>
-
-      {showAuthPopup && (
-        <div className="authPopup__overlay" onClick={() => setShowAuthPopup(false)}>
-          <div className="authPopup" onClick={(e) => e.stopPropagation()}>
-            <span className="authPopup__icon">🔒</span>
-            <p className="authPopup__text">Anda harus login terlebih dahulu</p>
-            <div className="authPopup__actions">
-              <button
-                className="authPopup__btnLogin"
-                onClick={() => navigate("/login")}
-              >
-                Login Sekarang
-              </button>
-              <button
-                className="authPopup__btnCancel"
-                onClick={() => setShowAuthPopup(false)}
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isModalOpen && (
         <div className="bookingModal__overlay" onClick={closeModal}>
@@ -360,7 +386,7 @@ export default function PaketDetailPage() {
                 <div className="bookingModal__body bookingModal__body--gray">
                   <div className="visitorTop">
                     <div>
-                      <div className="visitorTop__event">{eventTitle}</div>
+                      <div className="visitorTop__event">{destination.name}</div>
                       <div className="visitorTop__ticket">
                         {ticketName}: Tiket #1
                       </div>
@@ -519,6 +545,7 @@ export default function PaketDetailPage() {
           </div>
         </div>
       )}
+
       {isReceiptOpen && (
         <div className="receiptModal__overlay" onClick={closeReceipt}>
           <div className="receiptModal" onClick={(e) => e.stopPropagation()}>

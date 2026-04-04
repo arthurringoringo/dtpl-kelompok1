@@ -4,9 +4,11 @@ import "./login.css";
 import logo from "../../assets/logo.png";
 import { loginUser } from "../../services/api";
 import { setSession } from "../../utils/auth";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setLoggedIn } = useAuth();
   const [showPw, setShowPw] = useState(false);
 
   const [email, setEmail] = useState("");
@@ -22,6 +24,7 @@ export default function Login() {
     try {
       const res = await loginUser({ email, password });
       setSession({ ...res, email: res.email ?? email, password });
+      setLoggedIn(true);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Email atau kata sandi salah.");

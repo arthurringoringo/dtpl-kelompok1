@@ -1,28 +1,15 @@
 import { Link, useNavigate, NavLink } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import logo from "../assets/logo.png";
-import {logoutUser} from "../services/api.ts";
-
-const SESSION_KEY = "dummy_session";
-
-function getSession() {
-  const raw = localStorage.getItem(SESSION_KEY);
-  return raw ? JSON.parse(raw) : null;
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
+import { logoutUser } from "../services/api.ts";
+import { useAuth } from "../contexts/AuthContext";
+import { clearSession } from "../utils/auth";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const [session, setSession] = useState<{ email: string } | null>(null);
+  const { isLoggedIn, setLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setSession(getSession());
-  }, []);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -34,11 +21,11 @@ export default function Navbar() {
   }, []);
 
   const logout = async () => {
-      await logoutUser()
-      clearSession();
-      setSession(null);
-      setOpen(false);
-      navigate("/");
+    await logoutUser();
+    clearSession();
+    setLoggedIn(false);
+    setOpen(false);
+    navigate("/");
   };
 
   return (
@@ -75,7 +62,7 @@ export default function Navbar() {
         </nav>
 
         <div className="nav__actions">
-          {!session ? (
+          {!isLoggedIn ? (
             <>
               <Link to="/login" className="btn btn--ghost">
                 Masuk
@@ -107,7 +94,6 @@ export default function Navbar() {
                   onClick={() => setOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={open}
-                  title={session.email}
                 >
                   <span className="profileIcon" aria-hidden="true">
                     👤

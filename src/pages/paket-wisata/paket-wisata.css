@@ -3,6 +3,12 @@
   background: #ffffff;
 }
 
+.paketCard__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
 /* SCROLL REVEAL */
 .reveal {
   opacity: 0;

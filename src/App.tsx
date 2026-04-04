@@ -11,9 +11,11 @@ import PaketWisataPage from "./pages/paket-wisata/paket-wisata";
 import PaketDetailPage from "./pages/paket-detail/paket-detail";
 import PenginapanPage from "./pages/penginapan/penginapan";
 
-// ...
+import { AuthProvider } from "./contexts/AuthContext";
+
 export default function App() {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         {/* pages WITH navbar+footer */}
@@ -33,5 +35,6 @@ export default function App() {
         <Route path="/register" element={<Register />} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }

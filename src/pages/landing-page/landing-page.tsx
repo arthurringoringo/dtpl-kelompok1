@@ -1,58 +1,42 @@
 import "./landing-page.css";
 import Reveal from "../../components/reveal";
-import { destinations } from "../../data/destinations";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { getCategories, getDestinations } from "../../services/api";
+import type { Category, Destination } from "../../services/api";
 
-type Category = {
-  label: string;
-  image: string;
-};
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop";
 
-const categories: Category[] = [
-  {
-    label: "Kerajinan",
-    image:
-      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    label: "Kulineran",
-    image:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    label: "Keliling Desa",
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    label: "Kesenian",
-    image:
-      "https://images.unsplash.com/photo-1503095396549-807759245b35?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    label: "Atraksi",
-    image:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop",
-  },
-  {
-    label: "Outbond",
-    image:
-      "https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=600&auto=format&fit=crop",
-  },
+type FilterKey = "" | "today" | "tomorrow" | "this_week" | "free";
+
+const FILTERS: { label: string; key: FilterKey }[] = [
+  { label: "Semua", key: "" },
+  { label: "Hari Ini", key: "today" },
+  { label: "Besok", key: "tomorrow" },
+  { label: "Minggu Ini", key: "this_week" },
+  { label: "Gratis", key: "free" },
 ];
 
 export default function Home() {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState<string>("");
-  const filteredDestinations = useMemo(() => {
-    if (!activeCategory) {
-      return destinations;
-    }
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("");
 
-    return destinations.filter((item) => item.category.name === activeCategory);
-  }, [activeCategory]);
-  const displayedDestinations = filteredDestinations.slice(0, 6);
+  useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const params: Parameters<typeof getDestinations>[0] = {};
+    if (activeFilter === "free") params.price = "free";
+    else if (activeFilter) params.day = activeFilter as "today" | "tomorrow" | "this_week";
+    getDestinations(params).then(setDestinations).catch(() => {});
+  }, [activeFilter]);
+
+  const displayedDestinations = destinations.slice(0, 6);
+
   return (
     <div className="page">
       {/* HERO */}
@@ -100,24 +84,21 @@ export default function Home() {
 
         <div className="categories">
           {categories.map((c, index) => (
-            <Reveal key={c.label} delay={index * 100}>
+            <Reveal key={c.id} delay={index * 100}>
               <button
-                className={`cat ${activeCategory === c.label ? "cat--active" : ""}`}
+                className="cat"
                 type="button"
-                onClick={() => {
-                  setActiveCategory(c.label);
-                  navigate(`/paket?category=${encodeURIComponent(c.label)}`);
-                }}
+                onClick={() => navigate(`/paket?category_id=${c.id}`)}
               >
                 <div className="cat__circle" aria-hidden="true">
                   <img
-                    src={c.image}
-                    alt={c.label}
+                    src={c.image_url ?? FALLBACK_IMAGE}
+                    alt={c.name}
                     className="cat__image"
                     loading="lazy"
                   />
                 </div>
-                <div className="cat__label">{c.label}</div>
+                <div className="cat__label">{c.name}</div>
               </button>
             </Reveal>
           ))}
@@ -130,12 +111,22 @@ export default function Home() {
           <Reveal>
             <div className="popular__header">
               <span className="popular__subtitle">Popular events</span>
-              <h2 className="popular__title">
-                Kegiatan Populer
-                {activeCategory ? ` - ${activeCategory}` : ""}
-              </h2>
+              <h2 className="popular__title">Kegiatan Populer</h2>
             </div>
           </Reveal>
+
+          <div className="popular__filters">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                className={`chip${activeFilter === f.key ? " chip--active" : ""}`}
+                onClick={() => setActiveFilter(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
 
           <div className="eventGrid">
             {displayedDestinations.length > 0 ? (
@@ -145,10 +136,11 @@ export default function Home() {
                   delay={i * 120}
                   variant={i % 2 === 0 ? "left" : "right"}
                 >
+                  <Link to={`/paket-wisata/${item.id}`} className="eventCard__link">
                   <div className="eventCard">
                     <div className="eventCard__image">
                       <img
-                        src={item.image_url}
+                        src={item.image_url ?? FALLBACK_IMAGE}
                         alt={item.name}
                         className="eventCard__imageTag"
                       />
@@ -156,9 +148,7 @@ export default function Home() {
                     </div>
 
                     <div className="eventCard__body">
-                      <span className="eventCard__tag">
-                        {item.category.name}
-                      </span>
+                      <span className="eventCard__tag">{item.category_name}</span>
 
                       <div className="eventCard__meta">
                         <div className="eventCard__date">
@@ -174,9 +164,7 @@ export default function Home() {
 
                         <div className="eventCard__info">
                           <h3 className="eventCard__title">{item.name}</h3>
-                          <div className="eventCard__venue">
-                            {item.category.name}
-                          </div>
+                          <div className="eventCard__venue">{item.category_name}</div>
                           <div className="eventCard__time">
                             {item.start_time} - {item.end_time}
                           </div>
@@ -187,12 +175,13 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+                  </Link>
                 </Reveal>
               ))
             ) : (
               <Reveal>
                 <div className="emptyState">
-                  Belum ada destinasi{activeCategory ? ` untuk kategori ${activeCategory}` : ""}.
+                  Belum ada destinasi.
                 </div>
               </Reveal>
             )}

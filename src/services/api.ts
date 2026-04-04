@@ -1,4 +1,7 @@
-const API_BASE_URL = "https://api.desamanudjaya.com"
+const API_BASE_URL =
+    import.meta.env.MODE === "production"
+      ? "https://api.desamanudjaya.com"
+        : "http://localhost:8081";
 
 type ApiError = {
   error?: string;
@@ -23,6 +26,9 @@ async function apiFetch<T>(
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
+    if (response.status === 401 && !window.location.pathname.startsWith("/login")) {
+      window.location.href = "/login";
+    }
     const err = data as ApiError | null;
     throw new Error(
       err?.error || err?.message || `Request failed with status ${response.status}`
@@ -91,12 +97,17 @@ export type DestinationDetail = {
   name: string;
   date: string;
   descriptions: string;
+  destination_type?: string;
   image_url?: string | null;
   start_time?: string;
   end_time?: string;
+  latitude?: string;
+  longitude?: string;
   price?: string;
+  ticket_type?: string;
   category_id?: number;
   category_name?: string;
+  category?: { id: number; name: string; image_url: string | null };
   address?: string;
 };
 
@@ -207,11 +218,13 @@ export async function deleteCategory(id: string | number) {
 export async function getDestinations(params?: {
   day?: "today" | "tomorrow" | "this_week";
   price?: "free";
+  category_id?: number;
 }) {
   const searchParams = new URLSearchParams();
 
   if (params?.day) searchParams.set("day", params.day);
   if (params?.price) searchParams.set("price", params.price);
+  if (params?.category_id) searchParams.set("category_id", String(params.category_id));
 
   const query = searchParams.toString();
 
