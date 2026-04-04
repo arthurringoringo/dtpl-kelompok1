@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { getDestinationById } from "../../services/api";
 import type { DestinationDetail } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
