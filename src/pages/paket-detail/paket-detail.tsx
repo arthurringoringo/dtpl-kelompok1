@@ -1,7 +1,12 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getDestinationById } from "../../services/api";
-import type { DestinationDetail } from "../../services/api";
+import {
+  getDestinationById,
+  createOrder,
+  updateOrder,
+  createOrderVisitorDetails,
+} from "../../services/api";
+import type { DestinationDetail, OrderResponse } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import Reveal from "../../components/reveal";
 import "./paket-detail.css";
@@ -11,9 +16,9 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop";
 
 type VisitorForm = {
-  fullName: string;
+  name: string;
   email: string;
-  phone: string;
+  phone_number: string;
 };
 
 function formatRupiah(value: string | number) {
@@ -43,61 +48,61 @@ function formatReceiptDateTime(date: Date) {
     month: "2-digit",
     year: "numeric",
   });
-
   const formattedTime = date.toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
   });
-
   return `${formattedDate} ${formattedTime}`;
+}
+
+function emptyVisitor(): VisitorForm {
+  return { name: "", email: "", phone_number: "" };
 }
 
 export default function PaketDetailPage() {
   const { id } = useParams();
-  // const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
 
+  // ── destination data ──
   const [destination, setDestination] = useState<DestinationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // ── modal ui ──
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [orderId] = useState(() => `${Date.now()}`);
-  const [bookingTime] = useState(() => new Date());
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  // ── booking data ──
   const [qty, setQty] = useState(1);
-  const [form, setForm] = useState<VisitorForm>({
-    fullName: "",
-    email: "",
-    phone: "",
-  });
+  const [orderData, setOrderData] = useState<OrderResponse | null>(null);
+  const [visitors, setVisitors] = useState<VisitorForm[]>([emptyVisitor()]);
+  const [bookingTime] = useState(() => new Date());
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     getDestinationById(id)
-      .then((data) => {
-        setDestination(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setNotFound(true);
-        setLoading(false);
-      });
+      .then((data) => { setDestination(data); setLoading(false); })
+      .catch(() => { setNotFound(true); setLoading(false); });
   }, [id]);
 
-  const ticketName = "Tiket Standard";
+  // ── derived totals (from API after order created, local estimate before) ──
   const ticketPrice = Number(destination?.price ?? 0);
-  const tax = 20000;
+  const localSubTotal = qty * ticketPrice;
+  const subTotal   = orderData ? Number(orderData.sub_total)    : localSubTotal;
+  const taxAmount  = orderData ? Number(orderData.tax)          : 0;
+  const grandTotal = orderData ? Number(orderData.order_total)  : localSubTotal;
 
-  const total = useMemo(() => qty * ticketPrice, [qty, ticketPrice]);
-  const grandTotal = useMemo(() => total + tax, [total]);
-
+  // ── modal helpers ──
   const openModal = () => {
     setStep(1);
     setQty(1);
-    setForm({ fullName: "", email: "", phone: "" });
+    setVisitors([emptyVisitor()]);
+    setOrderData(null);
+    setApiError("");
     setIsModalOpen(true);
     document.body.style.overflow = "hidden";
   };
@@ -112,27 +117,80 @@ export default function PaketDetailPage() {
     document.body.style.overflow = "auto";
   };
 
-  const decreaseQty = () => setQty((prev) => Math.max(0, prev - 1));
-  const increaseQty = () => setQty((prev) => prev + 1);
-
-  const handleNextFromStep1 = () => {
-    if (qty < 1) return;
-    setStep(2);
+  // ── step 1: qty ──
+  const handleNextFromStep1 = async () => {
+    if (qty < 1 || !destination) return;
+    setSubmitting(true);
+    setApiError("");
+    try {
+      let res: OrderResponse;
+      if (orderData) {
+        // order already exists — update qty if changed
+        res = orderData.qty !== qty
+          ? await updateOrder(orderData.id, { qty })
+          : orderData;
+      } else {
+        res = await createOrder({
+          ticket_id: destination.id,
+          ticket_type: "destination",
+          qty,
+        });
+      }
+      setOrderData(res);
+      // re-initialise visitor forms to match current qty
+      setVisitors(Array.from({ length: qty }, (_, i) => visitors[i] ?? emptyVisitor()));
+      setStep(2);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Gagal membuat pesanan.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleNextFromStep2 = () => {
-    if (!form.fullName || !form.email || !form.phone) {
-      alert("Mohon lengkapi data pengunjung dulu ya.");
+  // ── step 2: visitor details ──
+  const updateVisitor = (index: number, field: keyof VisitorForm, value: string) => {
+    setVisitors((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    );
+  };
+
+  const handleNextFromStep2 = async () => {
+    if (visitors.some((v) => !v.name || !v.email || !v.phone_number)) {
+      setApiError("Mohon lengkapi semua data pengunjung.");
       return;
     }
-    setStep(3);
+    if (!orderData) return;
+    setSubmitting(true);
+    setApiError("");
+    try {
+      const res = await createOrderVisitorDetails(orderData.id, visitors);
+      setOrderData(res);
+      setStep(3);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Gagal menyimpan detail pengunjung.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  // ── step 3 → receipt ──
   const handlePayNow = () => {
     setIsModalOpen(false);
     setIsReceiptOpen(true);
   };
 
+  // ── back handlers ──
+  const backToStep1 = () => {
+    setApiError("");
+    setStep(1);
+  };
+
+  const backToStep2 = () => {
+    setApiError("");
+    setStep(2);
+  };
+
+  // ─────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="page">
@@ -158,6 +216,8 @@ export default function PaketDetailPage() {
   }
 
   const categoryName = destination.category?.name ?? destination.category_name ?? "";
+  const ticketName   = "Tiket Standard";
+  const orderId      = orderData?.id;
 
   return (
     <div className="page">
@@ -187,18 +247,14 @@ export default function PaketDetailPage() {
                 <Reveal>
                   <section className="paketDetail__section">
                     <h2 className="paketDetail__heading">Date and Time</h2>
-
                     <div className="paketDetail__infoItem">
                       <span className="paketDetail__icon">🗓</span>
                       <span>{formatDateIndonesia(destination.date)}</span>
                     </div>
-
                     {destination.start_time && destination.end_time && (
                       <div className="paketDetail__infoItem">
                         <span className="paketDetail__icon">🕒</span>
-                        <span>
-                          {destination.start_time} - {destination.end_time}
-                        </span>
+                        <span>{destination.start_time} - {destination.end_time}</span>
                       </div>
                     )}
                   </section>
@@ -208,7 +264,6 @@ export default function PaketDetailPage() {
                   <Reveal>
                     <section className="paketDetail__section">
                       <h2 className="paketDetail__heading">Location 📍</h2>
-
                       <div className="paketDetail__map">
                         <iframe
                           title="Lokasi Destinasi"
@@ -229,7 +284,6 @@ export default function PaketDetailPage() {
                   <Reveal>
                     <section className="paketDetail__section">
                       <h2 className="paketDetail__heading">Ticket Information</h2>
-
                       <div className="paketDetail__infoItem">
                         <span className="paketDetail__icon">🎟</span>
                         <span>
@@ -245,31 +299,21 @@ export default function PaketDetailPage() {
                 <Reveal>
                   <section className="paketDetail__section">
                     <h2 className="paketDetail__heading">Event Description</h2>
-                    <p className="paketDetail__paragraph">
-                      {destination.descriptions}
-                    </p>
+                    <p className="paketDetail__paragraph">{destination.descriptions}</p>
                   </section>
                 </Reveal>
               </div>
 
               <aside className="paketDetail__right">
                 <Reveal variant="right">
-                  <button
-                    className="paketDetail__fav"
-                    type="button"
-                    aria-label="Favorit"
-                  >
+                  <button className="paketDetail__fav" type="button" aria-label="Favorit">
                     ♡
                   </button>
                 </Reveal>
 
                 <Reveal variant="right">
                   {isLoggedIn ? (
-                    <button
-                      type="button"
-                      className="paketDetail__orderBtn"
-                      onClick={openModal}
-                    >
+                    <button type="button" className="paketDetail__orderBtn" onClick={openModal}>
                       🎟 Pesan Sekarang
                     </button>
                   ) : (
@@ -293,20 +337,17 @@ export default function PaketDetailPage() {
         </section>
       </main>
 
+      {/* ── BOOKING MODAL ── */}
       {isModalOpen && (
         <div className="bookingModal__overlay" onClick={closeModal}>
           <div className="bookingModal" onClick={(e) => e.stopPropagation()}>
+
+            {/* ── STEP 1: pick qty ── */}
             {step === 1 && (
               <>
                 <div className="bookingModal__header">
                   <h2 className="bookingModal__title">Pilih tiket</h2>
-                  <button
-                    type="button"
-                    className="bookingModal__close"
-                    onClick={closeModal}
-                  >
-                    ✕
-                  </button>
+                  <button type="button" className="bookingModal__close" onClick={closeModal}>✕</button>
                 </div>
 
                 <div className="bookingModal__body bookingModal__body--gray">
@@ -320,223 +361,162 @@ export default function PaketDetailPage() {
                     <div className="ticketItem__content">
                       <div className="ticketItem__info">
                         <div className="ticketItem__name">{ticketName}</div>
-                        <div className="ticketItem__price">
-                          {formatRupiah(ticketPrice)}
-                        </div>
+                        <div className="ticketItem__price">{formatRupiah(ticketPrice)}</div>
                       </div>
-
                       <div className="ticketQty">
-                        <button type="button" onClick={decreaseQty}>
-                          −
-                        </button>
+                        <button type="button" onClick={() => setQty((p) => Math.max(1, p - 1))}>−</button>
                         <span>{qty}</span>
-                        <button type="button" onClick={increaseQty}>
-                          ＋
-                        </button>
+                        <button type="button" onClick={() => setQty((p) => p + 1)}>＋</button>
                       </div>
                     </div>
                   </div>
+
+                  {apiError && <div className="bookingModal__error">{apiError}</div>}
                 </div>
 
                 <div className="bookingModal__footer">
                   <div className="bookingSummary">
-                    <span>
-                      Qty: <strong>{qty}</strong>
-                    </span>
-                    <span>
-                      Total:{" "}
-                      <strong className="text-green">
-                        {formatRupiah(total)}
-                      </strong>
-                    </span>
+                    <span>Qty: <strong>{qty}</strong></span>
+                    <span>Total: <strong className="text-green">{formatRupiah(localSubTotal)}</strong></span>
                   </div>
-
                   <button
                     type="button"
                     className="bookingPrimaryBtn"
                     onClick={handleNextFromStep1}
-                    disabled={qty < 1}
+                    disabled={qty < 1 || submitting}
                   >
-                    Process Pembayaran <span>›</span>
+                    {submitting ? "Memproses..." : <>Process Pembayaran <span>›</span></>}
                   </button>
                 </div>
               </>
             )}
 
+            {/* ── STEP 2: visitor details (one form per ticket) ── */}
             {step === 2 && (
               <>
                 <div className="bookingModal__header">
-                  <button
-                    type="button"
-                    className="bookingModal__back"
-                    onClick={() => setStep(1)}
-                  >
-                    ←
-                  </button>
+                  <button type="button" className="bookingModal__back" onClick={backToStep1}>←</button>
                   <h2 className="bookingModal__title">Detail Pengunjung</h2>
-                  <button
-                    type="button"
-                    className="bookingModal__close"
-                    onClick={closeModal}
-                  >
-                    ✕
-                  </button>
+                  <button type="button" className="bookingModal__close" onClick={closeModal}>✕</button>
                 </div>
 
                 <div className="bookingModal__body bookingModal__body--gray">
                   <div className="visitorTop">
                     <div>
                       <div className="visitorTop__event">{destination.name}</div>
-                      <div className="visitorTop__ticket">
-                        {ticketName}: Tiket #1
-                      </div>
+                      <div className="visitorTop__ticket">{ticketName} · {qty} tiket</div>
                     </div>
                     <div className="visitorTop__date">
                       📅 {formatDateIndonesia(destination.date)}
                     </div>
                   </div>
 
-                  <div className="visitorFormCard">
-                    <label className="visitorField">
-                      <span>Nama Lengkap</span>
-                      <input
-                        type="text"
-                        placeholder="Masukkan Nama Lengkap"
-                        value={form.fullName}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            fullName: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
+                  {visitors.map((v, index) => (
+                    <div key={index} className="visitorFormCard">
+                      {qty > 1 && (
+                        <div className="visitorFormCard__heading">Pengunjung #{index + 1}</div>
+                      )}
 
-                    <label className="visitorField">
-                      <span>Alamat Email</span>
-                      <input
-                        type="email"
-                        placeholder="Masukkan Alamat Email"
-                        value={form.email}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            email: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-
-                    <label className="visitorField">
-                      <span>Nomor Hp</span>
-                      <div className="phoneField">
-                        <span className="phoneField__prefix">🇮🇩</span>
+                      <label className="visitorField">
+                        <span>Nama Lengkap</span>
                         <input
                           type="text"
-                          placeholder="Masukkan Nomor Handphone"
-                          value={form.phone}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              phone: e.target.value,
-                            }))
-                          }
+                          placeholder="Masukkan Nama Lengkap"
+                          value={v.name}
+                          onChange={(e) => updateVisitor(index, "name", e.target.value)}
                         />
-                      </div>
-                    </label>
-                  </div>
+                      </label>
+
+                      <label className="visitorField">
+                        <span>Alamat Email</span>
+                        <input
+                          type="email"
+                          placeholder="Masukkan Alamat Email"
+                          value={v.email}
+                          onChange={(e) => updateVisitor(index, "email", e.target.value)}
+                        />
+                      </label>
+
+                      <label className="visitorField">
+                        <span>Nomor Hp</span>
+                        <div className="phoneField">
+                          <span className="phoneField__prefix">🇮🇩</span>
+                          <input
+                            type="text"
+                            placeholder="Masukkan Nomor Handphone"
+                            value={v.phone_number}
+                            onChange={(e) => updateVisitor(index, "phone_number", e.target.value)}
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+
+                  {apiError && <div className="bookingModal__error">{apiError}</div>}
                 </div>
 
                 <div className="bookingModal__footer">
                   <div className="bookingSummary">
-                    <span>
-                      Qty: <strong>{qty}</strong>
-                    </span>
-                    <span>
-                      Total:{" "}
-                      <strong className="text-green">
-                        {formatRupiah(total)}
-                      </strong>
-                    </span>
+                    <span>Qty: <strong>{qty}</strong></span>
+                    <span>Total: <strong className="text-green">{formatRupiah(subTotal)}</strong></span>
                   </div>
-
                   <button
                     type="button"
                     className="bookingPrimaryBtn bookingPrimaryBtn--muted"
                     onClick={handleNextFromStep2}
+                    disabled={submitting}
                   >
-                    Lanjutkan Pembayaran <span>›</span>
+                    {submitting ? "Menyimpan..." : <>Lanjutkan Pembayaran <span>›</span></>}
                   </button>
                 </div>
               </>
             )}
 
-            {step === 3 && (
+            {/* ── STEP 3: order summary ── */}
+            {step === 3 && orderData && (
               <>
                 <div className="bookingModal__header">
-                  <button
-                    type="button"
-                    className="bookingModal__back"
-                    onClick={() => setStep(2)}
-                  >
-                    ←
-                  </button>
+                  <button type="button" className="bookingModal__back" onClick={backToStep2}>←</button>
                   <h2 className="bookingModal__title">Ringkasan Pesanan</h2>
-                  <button
-                    type="button"
-                    className="bookingModal__close"
-                    onClick={closeModal}
-                  >
-                    ✕
-                  </button>
+                  <button type="button" className="bookingModal__close" onClick={closeModal}>✕</button>
                 </div>
 
                 <div className="bookingModal__body bookingModal__body--gray bookingModal__body--summary">
-                  <div className="ticketSummaryCard">
-                    <div className="ticketSummaryCard__title">{ticketName}</div>
-                    <div className="ticketSummaryCard__content">
-                      <div>
-                        <div className="ticketSummaryCard__label">
-                          Nama Pengunjung
+                  {orderData.order_visitor_details.map((v, index) => (
+                    <div key={v.id} className="ticketSummaryCard">
+                      <div className="ticketSummaryCard__title">{ticketName} #{index + 1}</div>
+                      <div className="ticketSummaryCard__content">
+                        <div>
+                          <div className="ticketSummaryCard__label">Nama Pengunjung</div>
+                          <div className="ticketSummaryCard__value">{v.name}</div>
+                          <div className="ticketSummaryCard__value">{v.email}</div>
                         </div>
-                        <div className="ticketSummaryCard__value">
-                          {form.fullName}
+                        <div className="ticketSummaryCard__badge">
+                          {formatRupiah(ticketPrice)}
                         </div>
-                        <div className="ticketSummaryCard__value">
-                          {form.email}
-                        </div>
-                      </div>
-                      <div className="ticketSummaryCard__badge">
-                        {formatRupiah(ticketPrice)}
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="bookingModal__footer bookingModal__footer--summary">
                   <div className="paymentSummary">
                     <div className="paymentSummary__row">
                       <span>Sub Total:</span>
-                      <strong>{formatRupiah(total)}</strong>
+                      <strong>{formatRupiah(subTotal)}</strong>
                     </div>
                     <div className="paymentSummary__row">
                       <span>Tax:</span>
-                      <strong>{formatRupiah(tax)}</strong>
+                      <strong>{formatRupiah(taxAmount)}</strong>
                     </div>
                     <div className="paymentSummary__divider" />
                     <div className="paymentSummary__row paymentSummary__row--grand">
                       <span>Order Total:</span>
-                      <strong className="text-green">
-                        {formatRupiah(grandTotal)}
-                      </strong>
+                      <strong className="text-green">{formatRupiah(grandTotal)}</strong>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="bookingPayBtn"
-                    onClick={handlePayNow}
-                  >
+                  <button type="button" className="bookingPayBtn" onClick={handlePayNow}>
                     🔒 Bayar Sekarang
                   </button>
                 </div>
@@ -546,17 +526,12 @@ export default function PaketDetailPage() {
         </div>
       )}
 
-      {isReceiptOpen && (
+      {/* ── RECEIPT MODAL ── */}
+      {isReceiptOpen && orderData && (
         <div className="receiptModal__overlay" onClick={closeReceipt}>
           <div className="receiptModal" onClick={(e) => e.stopPropagation()}>
             <div className="receiptModal__header">
-              <button
-                type="button"
-                className="receiptModal__close"
-                onClick={closeReceipt}
-              >
-                ✕
-              </button>
+              <button type="button" className="receiptModal__close" onClick={closeReceipt}>✕</button>
             </div>
 
             <div className="receiptModal__logoWrap">
@@ -566,60 +541,43 @@ export default function PaketDetailPage() {
             <h1 className="receiptModal__title">Bukti Pembayaran Tiket</h1>
 
             <div className="receiptModal__meta">
-              <div className="receiptModal__date">
-                {formatReceiptDate(bookingTime)}
-              </div>
+              <div className="receiptModal__date">{formatReceiptDate(bookingTime)}</div>
               <div className="receiptModal__orderId">Order ID: {orderId}</div>
             </div>
 
-            <div className="receiptTicket">
-              <div className="receiptTicket__topLine" />
-
-              <div className="receiptTicket__type">{ticketName}</div>
-
-              <div className="receiptTicket__content">
-                <div className="receiptTicket__left">
-                  <div className="receiptTicket__destination">
-                    {destination.name}
+            {orderData.order_visitor_details.map((v, index) => (
+              <div key={v.id} className="receiptTicket">
+                <div className="receiptTicket__topLine" />
+                <div className="receiptTicket__type">{ticketName} #{index + 1}</div>
+                <div className="receiptTicket__content">
+                  <div className="receiptTicket__left">
+                    <div className="receiptTicket__destination">{destination.name}</div>
+                    <div className="receiptTicket__visitor">{v.name}</div>
+                    <div className="receiptTicket__visitor">{v.email}</div>
+                    <div className="receiptTicket__visitor">{v.phone_number}</div>
                   </div>
-                  <div className="receiptTicket__visitor">{form.fullName}</div>
-                  <div className="receiptTicket__visitor">{form.email}</div>
-                  <div className="receiptTicket__visitor">{form.phone}</div>
+                  <div className="receiptTicket__qrWrap">
+                    <img
+                      className="receiptTicket__qr"
+                      alt="QR Code Tiket"
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                        JSON.stringify({ orderId, ticket: index + 1, destination: destination.name, visitor: v.name, email: v.email })
+                      )}`}
+                    />
+                  </div>
                 </div>
-
-                <div className="receiptTicket__qrWrap">
-                  <img
-                    className="receiptTicket__qr"
-                    alt="QR Code Tiket"
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                      JSON.stringify({
-                        orderId,
-                        destination: destination.name,
-                        visitor: form.fullName,
-                        email: form.email,
-                        phone: form.phone,
-                        qty,
-                        total: grandTotal,
-                      }),
-                    )}`}
-                  />
-                </div>
+                <div className="receiptTicket__bottomLine" />
               </div>
-
-              <div className="receiptTicket__bottomLine" />
-            </div>
+            ))}
 
             <div className="receiptModal__infoRow">
               <div>
                 <div className="receiptModal__label">Metode Pembayaran</div>
                 <div className="receiptModal__label">Waktu Pemesanan</div>
               </div>
-
               <div className="receiptModal__infoRight">
                 <div className="receiptModal__paymentMethod">BCA</div>
-                <div className="receiptModal__bookingTime">
-                  {formatReceiptDateTime(bookingTime)}
-                </div>
+                <div className="receiptModal__bookingTime">{formatReceiptDateTime(bookingTime)}</div>
               </div>
             </div>
 
@@ -627,21 +585,16 @@ export default function PaketDetailPage() {
               <div className="receiptSummary">
                 <div className="receiptSummary__row">
                   <span>Sub Total:</span>
-                  <strong>{formatRupiah(total)}</strong>
+                  <strong>{formatRupiah(subTotal)}</strong>
                 </div>
-
                 <div className="receiptSummary__row">
                   <span>Tax:</span>
-                  <strong>{formatRupiah(tax)}</strong>
+                  <strong>{formatRupiah(taxAmount)}</strong>
                 </div>
-
                 <div className="receiptSummary__divider" />
-
                 <div className="receiptSummary__row receiptSummary__row--grand">
                   <span>Order Total:</span>
-                  <strong className="text-green">
-                    {formatRupiah(grandTotal)}
-                  </strong>
+                  <strong className="text-green">{formatRupiah(grandTotal)}</strong>
                 </div>
               </div>
             </div>
@@ -657,8 +610,7 @@ export default function PaketDetailPage() {
               tanpa pengembalian dana. Penyedia layanan tidak bertanggung jawab
               atas gangguan yang disebabkan oleh keadaan di luar kendali (force
               majeure). Dengan melakukan pembelian, pelanggan dianggap telah
-              membaca, memahami, dan menyetujui seluruh syarat dan ketentuan
-              ini.
+              membaca, memahami, dan menyetujui seluruh syarat dan ketentuan ini.
             </p>
           </div>
         </div>

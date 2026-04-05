@@ -235,3 +235,68 @@ export async function getDestinations(params?: {
 export async function getDestinationById(id: string | number) {
   return apiFetch<DestinationDetail>(`/destination/${id}`);
 }
+
+/* =========================
+   ORDER API
+========================= */
+
+export type OrderVisitorDetail = {
+  id: number;
+  name: string;
+  email: string;
+  phone_number: string;
+};
+
+export type OrderResponse = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  qty: number;
+  order_total: string;
+  tax: string;
+  sub_total: string;
+  status: string;
+  order_item: {
+    id: number;
+    name: string;
+    image_url: string | null;
+    date: string;
+    start_time: string;
+    end_time: string;
+    price: string;
+    category_id: number;
+    category_name: string;
+  };
+  order_visitor_details: OrderVisitorDetail[];
+};
+
+// CREATE ORDER
+export async function createOrder(payload: {
+  ticket_id: number;
+  ticket_type: string;
+  qty: number;
+}) {
+  return apiFetch<OrderResponse>("/order", {
+    method: "POST",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+// UPDATE ORDER
+export async function updateOrder(orderId: number, payload: { qty: number }) {
+  return apiFetch<OrderResponse>(`/order/${orderId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+// CREATE ORDER VISITOR DETAILS
+export async function createOrderVisitorDetails(
+  orderId: number,
+  visitors: { name: string; email: string; phone_number: string }[]
+) {
+  return apiFetch<OrderResponse>(`/order/${orderId}/visitor_details`, {
+    method: "POST",
+    body: JSON.stringify({ data: visitors }),
+  });
+}
