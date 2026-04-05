@@ -139,6 +139,32 @@
   transform: translateY(1px);
 }
 
+.roomCard__button--disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.roomCard__button--disabled:hover {
+  filter: none;
+}
+
+.roomCard__loginNote {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 8px 0 0;
+}
+
+.roomCard__loginNote a {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.roomCard__loginNote a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .roomCard {
     padding: 24px 22px 28px;

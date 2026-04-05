@@ -237,6 +237,26 @@ export async function getDestinationById(id: string | number) {
 }
 
 /* =========================
+   ACCOMMODATION API
+========================= */
+
+export type Accommodation = {
+  id: number;
+  name: string;
+  facilities: string[];
+  price: string;
+  image_url: string | null;
+};
+
+export async function getAccommodations() {
+  return apiFetch<Accommodation[]>("/accommodations");
+}
+
+export async function getAccommodationById(id: string | number) {
+  return apiFetch<Accommodation>(`/accommodation/${id}`);
+}
+
+/* =========================
    ORDER API
 ========================= */
 

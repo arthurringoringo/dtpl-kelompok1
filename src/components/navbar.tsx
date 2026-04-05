@@ -9,6 +9,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { isLoggedIn, setLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -28,6 +29,8 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <header className="navbar">
       <div className="navbar__inner container">
@@ -35,13 +38,14 @@ export default function Navbar() {
           <img className="loginLeft__logo" src={logo} alt="Logo" />
         </Link>
 
-        <nav className="nav">
+        <nav className={`nav${menuOpen ? " nav--open" : ""}`}>
           <NavLink
             to="/"
             end
             className={({ isActive }) =>
               "nav__link" + (isActive ? " nav__link--active" : "")
             }
+            onClick={closeMenu}
           >
             Beranda
           </NavLink>
@@ -51,12 +55,15 @@ export default function Navbar() {
             className={({ isActive }) =>
               "nav__link" + (isActive ? " nav__link--active" : "")
             }
+            onClick={closeMenu}
           >
             Paket Wisata
           </NavLink>
 
-          <Link to="/penginapan" className="nav__link">Penginapan</Link>
-          <a className="nav__link" href="#tentang">
+          <Link to="/penginapan" className="nav__link" onClick={closeMenu}>
+            Penginapan
+          </Link>
+          <a className="nav__link" href="#tentang" onClick={closeMenu}>
             Tentang Kami
           </a>
         </nav>
@@ -74,16 +81,12 @@ export default function Navbar() {
           ) : (
             <div className="navAuth">
               <button className="navIconBtn" type="button" title="Tickets">
-                <span className="navIconBtn__icon" aria-hidden="true">
-                  🎟️
-                </span>
+                <span className="navIconBtn__icon" aria-hidden="true">🎟️</span>
                 <span className="navIconBtn__label">Tickets</span>
               </button>
 
               <button className="navIconBtn" type="button" title="Wishlist">
-                <span className="navIconBtn__icon" aria-hidden="true">
-                  ❤️
-                </span>
+                <span className="navIconBtn__icon" aria-hidden="true">❤️</span>
                 <span className="navIconBtn__label">Wishlist</span>
               </button>
 
@@ -95,12 +98,8 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={open}
                 >
-                  <span className="profileIcon" aria-hidden="true">
-                    👤
-                  </span>
-                  <span className="profileCaret" aria-hidden="true">
-                    ▾
-                  </span>
+                  <span className="profileIcon" aria-hidden="true">👤</span>
+                  <span className="profileCaret" aria-hidden="true">▾</span>
                 </button>
 
                 {open && (
@@ -108,14 +107,10 @@ export default function Navbar() {
                     <button
                       className="profileItem"
                       type="button"
-                      onClick={() => {
-                        setOpen(false);
-                        navigate("/account");
-                      }}
+                      onClick={() => { setOpen(false); navigate("/account"); }}
                     >
                       Pengaturan Akun
                     </button>
-
                     <button
                       className="profileItem profileItem--danger"
                       type="button"
@@ -128,6 +123,15 @@ export default function Navbar() {
               </div>
             </div>
           )}
+
+          <button
+            type="button"
+            className="hamburger"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
         </div>
       </div>
     </header>

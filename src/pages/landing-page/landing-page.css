@@ -44,6 +44,8 @@ body {
     position: sticky;
     top: 0;
     z-index: 50;
+    /* needed so mobile .nav dropdown is positioned relative to the navbar */
+    isolation: isolate;
 }
 
 .navbar__inner {
@@ -585,9 +587,46 @@ body {
 }
 
 /* RESPONSIVE */
+/* HAMBURGER */
+.hamburger {
+    display: none;
+    background: transparent;
+    border: 0;
+    color: rgba(255, 255, 255, .9);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    margin-left: 8px;
+}
+
 @media (max-width: 980px) {
+    .hamburger {
+        display: block;
+    }
+
     .nav {
         display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background: var(--nav);
+        padding: 8px 0 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+        z-index: 49;
+        gap: 0;
+    }
+
+    .nav--open {
+        display: flex;
+    }
+
+    .nav__link {
+        padding: 12px 24px;
+        border-bottom: none;
+        font-size: 15px;
     }
 
     .hero__inner {
