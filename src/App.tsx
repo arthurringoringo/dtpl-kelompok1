@@ -10,31 +10,36 @@ import ChangePassword from "./pages/account/change-password";
 import PaketWisataPage from "./pages/paket-wisata/paket-wisata";
 import PaketDetailPage from "./pages/paket-detail/paket-detail";
 import PenginapanPage from "./pages/penginapan/penginapan";
+import WishlistPage from "./pages/wishlist/wishlist";
+import RiwayatPesananPage from "./pages/riwayat-pesanan/riwayat-pesanan";
 
 import { AuthProvider } from "./contexts/AuthContext";
 
 export default function App() {
   return (
     <AuthProvider>
-    <BrowserRouter>
-      <Routes>
-        {/* pages WITH navbar+footer */}
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/paket" element={<PaketWisataPage />} />
-<Route path="/paket-wisata/:id" element={<PaketDetailPage />} />
-<Route path="/penginapan" element={<PenginapanPage />} />
+      <BrowserRouter>
+        <Routes>
+          {/* pages WITH navbar+footer */}
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/paket" element={<PaketWisataPage />} />
+            <Route path="/paket-wisata/:id" element={<PaketDetailPage />} />
+            <Route path="/penginapan" element={<PenginapanPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/riwayat-pesanan" element={<RiwayatPesananPage />} />
 
-          <Route path="/account" element={<AccountLayout />}>
-            <Route index element={<ProfileInfo />} />
-            <Route path="email" element={<ChangeEmail />} />
-            <Route path="password" element={<ChangePassword />} />
+
+            <Route path="/account" element={<AccountLayout />}>
+              <Route index element={<ProfileInfo />} />
+              <Route path="email" element={<ChangeEmail />} />
+              <Route path="password" element={<ChangePassword />} />
+            </Route>
           </Route>
-        </Route>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   );
 }

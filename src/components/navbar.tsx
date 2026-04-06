@@ -80,13 +80,26 @@ export default function Navbar() {
             </>
           ) : (
             <div className="navAuth">
-              <button className="navIconBtn" type="button" title="Tickets">
-                <span className="navIconBtn__icon" aria-hidden="true">🎟️</span>
+              <button
+                className="navIconBtn"
+                type="button"
+                title="Tickets"
+                onClick={() => navigate("/riwayat-pesanan")}
+              >
+                <span className="navIconBtn__icon" aria-hidden="true">
+                  🎟️
+                </span>
                 <span className="navIconBtn__label">Tickets</span>
               </button>
-
-              <button className="navIconBtn" type="button" title="Wishlist">
-                <span className="navIconBtn__icon" aria-hidden="true">❤️</span>
+              <button
+                className="navIconBtn"
+                type="button"
+                title="Wishlist"
+                onClick={() => navigate("/wishlist")}
+              >
+                <span className="navIconBtn__icon" aria-hidden="true">
+                  ❤️
+                </span>
                 <span className="navIconBtn__label">Wishlist</span>
               </button>
 
@@ -98,8 +111,12 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={open}
                 >
-                  <span className="profileIcon" aria-hidden="true">👤</span>
-                  <span className="profileCaret" aria-hidden="true">▾</span>
+                  <span className="profileIcon" aria-hidden="true">
+                    👤
+                  </span>
+                  <span className="profileCaret" aria-hidden="true">
+                    ▾
+                  </span>
                 </button>
 
                 {open && (
@@ -107,7 +124,10 @@ export default function Navbar() {
                     <button
                       className="profileItem"
                       type="button"
-                      onClick={() => { setOpen(false); navigate("/account"); }}
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/account");
+                      }}
                     >
                       Pengaturan Akun
                     </button>
