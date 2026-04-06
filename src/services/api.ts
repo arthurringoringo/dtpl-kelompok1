@@ -309,6 +309,13 @@ export async function updateOrder(orderId: number, payload: { qty: number }) {
   });
 }
 
+// PAY NOW — transitions order from draft → waiting_for_payment
+export async function payNowOrder(orderId: number) {
+  return apiFetch<OrderResponse>(`/order/${orderId}/pay_now`, {
+    method: "POST",
+  });
+}
+
 /* =========================
    WISHLIST API
 ========================= */

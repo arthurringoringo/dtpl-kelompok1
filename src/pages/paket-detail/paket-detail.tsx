@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import {
   getDestinationById,
   createOrder,
   updateOrder,
   createOrderVisitorDetails,
+  payNowOrder,
+  getOrderHistory,
   getWishlists,
   addWishlist,
   removeWishlist,
 } from "../../services/api";
-import type { DestinationDetail, OrderResponse } from "../../services/api";
+import type { DestinationDetail, OrderResponse, OrderHistoryItem } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import Reveal from "../../components/reveal";
 import "./paket-detail.css";
@@ -65,6 +67,9 @@ function emptyVisitor(): VisitorForm {
 export default function PaketDetailPage() {
   const { id } = useParams();
   const { isLoggedIn } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const resumeOrder = (location.state as { resumeOrder?: OrderHistoryItem } | null)?.resumeOrder;
 
   // ── destination data ──
   const [destination, setDestination] = useState<DestinationDetail | null>(null);
@@ -98,6 +103,60 @@ export default function PaketDetailPage() {
       .then((items) => setIsWishlisted(items.some((i) => i.id === Number(id))))
       .catch(() => { });
   }, [id]);
+
+  // Auto-open modal when resuming a draft order from riwayat-pesanan.
+  // Always re-checks the order status from BE first — if it's no longer draft
+  // (e.g. user already completed payment), clear the stale location state and
+  // fall through to a normal new-order flow.
+  useEffect(() => {
+    if (!resumeOrder || loading) return;
+
+    getOrderHistory(resumeOrder.id)
+      .then((latest) => {
+        if (latest.status.toLowerCase() !== "draft") {
+          // Order already progressed — wipe the location state so the next
+          // "Pesan Sekarang" click starts a completely fresh order.
+          navigate(location.pathname, { replace: true, state: null });
+          return;
+        }
+
+        // Still a draft — resume the booking flow.
+        const fakeOrder: OrderResponse = {
+          id: latest.id,
+          user_id: 0,
+          user_name: "",
+          qty: latest.qty,
+          order_total: latest.order_total,
+          tax: latest.tax,
+          sub_total: latest.sub_total,
+          status: latest.status,
+          order_item: latest.order_item,
+          order_visitor_details: latest.visitor_details,
+        };
+        setOrderData(fakeOrder);
+        setQty(latest.qty);
+        if (latest.visitor_details.length > 0) {
+          setVisitors(
+            latest.visitor_details.map((v) => ({
+              name: v.name,
+              email: v.email,
+              phone_number: v.phone_number,
+            }))
+          );
+          setStep(3);
+        } else {
+          setVisitors(Array.from({ length: latest.qty }, () => emptyVisitor()));
+          setStep(2);
+        }
+        setApiError("");
+        setIsModalOpen(true);
+        document.body.style.overflow = "hidden";
+      })
+      .catch(() => {
+        // Can't verify — clear resume state and let user start fresh.
+        navigate(location.pathname, { replace: true, state: null });
+      });
+  }, [resumeOrder, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleWishlist = async () => {
     const prev = isWishlisted;
@@ -214,12 +273,27 @@ export default function PaketDetailPage() {
     }
   };
 
-  // ── step 3 → payment ──
-  const handlePayNow = () => {
-    setIsModalOpen(false);
-    setTimeLeft(15 * 60);
-    setPaymentDeadline(Date.now() + 15 * 60 * 1000);
-    setIsPaymentOpen(true);
+  // ── step 3 → pay_now → receipt ──
+  const handlePayNow = async () => {
+    if (!orderData) return;
+    setSubmitting(true);
+    setApiError("");
+    try {
+      const res = await payNowOrder(orderData.id);
+      setOrderData(res);
+      // Clear resume state so any subsequent "Pesan Sekarang" starts fresh.
+      navigate(location.pathname, { replace: true, state: null });
+      setIsModalOpen(false);
+        setIsModalOpen(false);
+        setTimeLeft(10 * 60);
+        setPaymentDeadline(Date.now() + 10 * 60 * 1000);
+        setIsPaymentOpen(true);
+      document.body.style.overflow = "hidden";
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Gagal memproses pembayaran.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const closePayment = () => {
@@ -581,8 +655,14 @@ export default function PaketDetailPage() {
                     </div>
                   </div>
 
-                  <button type="button" className="bookingPayBtn" onClick={handlePayNow}>
-                    🔒 Bayar Sekarang
+                  {apiError && <div className="bookingModal__error">{apiError}</div>}
+                  <button
+                    type="button"
+                    className="bookingPayBtn"
+                    onClick={handlePayNow}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Memproses..." : "🔒 Bayar Sekarang"}
                   </button>
                 </div>
               </>

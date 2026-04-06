@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getOrderHistories, getOrderHistory } from "../../services/api";
 import type { OrderHistoryItem } from "../../services/api";
 import "./riwayat-pesanan.css";
@@ -25,13 +26,15 @@ function formatOrderDate(isoDate: string) {
 }
 
 function statusClass(status: string) {
-  const s = status.toLowerCase();
+  const s = status.toLowerCase().replace(/\s/g, "_");
   if (s === "paid" || s.includes("success") || s.includes("completed")) return "paid";
   if (s.includes("failed") || s.includes("cancel")) return "failed";
+  if (s === "draft") return "draft";
   return "pending";
 }
 
 export default function RiwayatPesananPage() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -54,6 +57,12 @@ export default function RiwayatPesananPage() {
       order.order_item.name.toLowerCase().includes(search)
     );
   }, [keyword, orders]);
+
+  const handleResume = (order: OrderHistoryItem) => {
+    navigate(`/paket-wisata/${order.order_item.id}`, {
+      state: { resumeOrder: order },
+    });
+  };
 
   const handleToggleDetail = async (order: OrderHistoryItem) => {
     if (expandedId === order.id) {
@@ -121,6 +130,15 @@ export default function RiwayatPesananPage() {
                     >
                       {order.status}
                     </span>
+                    {statusClass(order.status) === "draft" && (
+                      <button
+                        type="button"
+                        className="orderHistory__resumeBtn"
+                        onClick={() => handleResume(order)}
+                      >
+                        Lanjutkan Pesanan →
+                      </button>
+                    )}
                   </div>
 
                   <div className="orderHistory__topRow">

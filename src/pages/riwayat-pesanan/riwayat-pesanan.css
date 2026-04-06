@@ -107,6 +107,28 @@
   color: #ffffff;
 }
 
+.orderHistory__badge--draft {
+  background: #9ca3af;
+  color: #ffffff;
+}
+
+.orderHistory__resumeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2e7d32;
+  padding: 0;
+  margin-left: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.orderHistory__resumeBtn:hover {
+  color: #1b5e20;
+}
+
 .orderHistory__topRow {
   display: flex;
   align-items: center;
