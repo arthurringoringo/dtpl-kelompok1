@@ -102,6 +102,11 @@
   color: #ffffff;
 }
 
+.orderHistory__badge--pending {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
 .orderHistory__topRow {
   display: flex;
   align-items: center;
@@ -254,4 +259,69 @@
   .orderHistory__divider {
     display: none;
   }
+}
+
+/* ── Visitor Detail Section ── */
+.orderHistory__visitorSection {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+}
+
+.orderHistory__visitorTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.orderHistory__visitorCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+
+.orderHistory__visitorNo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.orderHistory__visitorName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.orderHistory__visitorEmail,
+.orderHistory__visitorPhone {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.orderHistory__summaryRow {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: #374151;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.orderHistory__visitorLoading {
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 8px 0;
+}
+
+.orderHistory__thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
 }

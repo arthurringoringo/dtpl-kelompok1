@@ -1,4 +1,6 @@
-const API_BASE_URL = "https://api.desamanudjaya.com";
+const API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:8081"
+  : "https://api.desamanudjaya.com";
 
 type ApiError = {
   error?: string;
@@ -305,6 +307,78 @@ export async function updateOrder(orderId: number, payload: { qty: number }) {
     method: "PATCH",
     body: JSON.stringify({ data: payload }),
   });
+}
+
+/* =========================
+   WISHLIST API
+========================= */
+
+export type WishlistDestination = {
+  id: number;
+  name: string;
+  date: string;
+  descriptions: string;
+  start_time: string;
+  end_time: string;
+  image_url: string | null;
+  latitude: string;
+  longitude: string;
+  price: string;
+  ticket_type: string;
+  category: { id: number; name: string; image_url: string | null };
+};
+
+export async function getWishlists() {
+  return apiFetch<WishlistDestination[]>("/wishlists");
+}
+
+export async function addWishlist(destinationId: number) {
+  return apiFetch<{ message: string }>("/wishlist", {
+    method: "POST",
+    body: JSON.stringify({ data: { destination_id: destinationId } }),
+  });
+}
+
+export async function removeWishlist(destinationId: number) {
+  return apiFetch<{ message: string }>(`/wishlist/${destinationId}`, {
+    method: "DELETE",
+  });
+}
+
+/* =========================
+   ORDER HISTORY API
+========================= */
+
+export type OrderHistoryItem = {
+  id: number;
+  booking_code: string;
+  qty: number;
+  sub_total: string;
+  tax: string;
+  order_total: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  order_item: {
+    id: number;
+    name: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    image_url: string | null;
+    price: string;
+    category_id: number;
+    category_name: string;
+  };
+  visitor_details: OrderVisitorDetail[];
+};
+
+export async function getOrderHistories() {
+  return apiFetch<OrderHistoryItem[]>("/order_histories");
+}
+
+export async function getOrderHistory(id: number) {
+  return apiFetch<OrderHistoryItem>(`/order_history/${id}`);
 }
 
 // CREATE ORDER VISITOR DETAILS

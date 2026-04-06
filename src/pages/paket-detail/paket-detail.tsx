@@ -5,6 +5,9 @@ import {
   createOrder,
   updateOrder,
   createOrderVisitorDetails,
+  getWishlists,
+  addWishlist,
+  removeWishlist,
 } from "../../services/api";
 import type { DestinationDetail, OrderResponse } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -22,7 +25,7 @@ type VisitorForm = {
 };
 
 function formatRupiah(value: string | number) {
-  return `Rp ${Number(value).toLocaleString("id-ID")}`;
+  return `Rp ${Number(value).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatDateIndonesia(dateString: string) {
@@ -67,6 +70,7 @@ export default function PaketDetailPage() {
   const [destination, setDestination] = useState<DestinationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   // ── modal ui ──
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,7 +91,24 @@ export default function PaketDetailPage() {
     getDestinationById(id)
       .then((data) => { setDestination(data); setLoading(false); })
       .catch(() => { setNotFound(true); setLoading(false); });
+    getWishlists()
+      .then((items) => setIsWishlisted(items.some((i) => i.id === Number(id))))
+      .catch(() => {});
   }, [id]);
+
+  const handleToggleWishlist = async () => {
+    const prev = isWishlisted;
+    setIsWishlisted(!prev);
+    try {
+      if (prev) {
+        await removeWishlist(Number(id));
+      } else {
+        await addWishlist(Number(id));
+      }
+    } catch {
+      setIsWishlisted(prev);
+    }
+  };
 
   // ── derived totals (from API after order created, local estimate before) ──
   const ticketPrice = Number(destination?.price ?? 0);
@@ -306,8 +327,13 @@ export default function PaketDetailPage() {
 
               <aside className="paketDetail__right">
                 <Reveal variant="right">
-                  <button className="paketDetail__fav" type="button" aria-label="Favorit">
-                    ♡
+                  <button
+                    className="paketDetail__fav"
+                    type="button"
+                    aria-label={isWishlisted ? "hapus dari wishlist" : "tambah ke wishlist"}
+                    onClick={handleToggleWishlist}
+                  >
+                    {isWishlisted ? "★" : "☆"}
                   </button>
                 </Reveal>
 

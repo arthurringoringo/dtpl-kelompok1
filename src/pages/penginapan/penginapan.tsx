@@ -17,7 +17,7 @@ const FALLBACK_IMAGE =
 type VisitorForm = { name: string; email: string; phone_number: string };
 
 function formatRupiah(value: string | number) {
-  return `Rp ${Number(value).toLocaleString("id-ID")}`;
+  return `Rp ${Number(value).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function formatReceiptDate(d: Date) {
   return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });

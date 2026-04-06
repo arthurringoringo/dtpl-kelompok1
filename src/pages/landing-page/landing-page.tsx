@@ -2,7 +2,7 @@ import "./landing-page.css";
 import Reveal from "../../components/reveal";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { getCategories, getDestinations } from "../../services/api";
+import { getCategories, getDestinations, getWishlists, addWishlist, removeWishlist } from "../../services/api";
 import type { Category, Destination } from "../../services/api";
 
 const FALLBACK_IMAGE =
@@ -23,10 +23,38 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("");
+  const [wishlistedIds, setWishlistedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
+    getWishlists()
+      .then((items) => setWishlistedIds(new Set(items.map((i) => i.id))))
+      .catch(() => {});
   }, []);
+
+  const handleToggleWishlist = async (e: React.MouseEvent, id: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const isWishlisted = wishlistedIds.has(id);
+    setWishlistedIds((prev) => {
+      const next = new Set(prev);
+      isWishlisted ? next.delete(id) : next.add(id);
+      return next;
+    });
+    try {
+      if (isWishlisted) {
+        await removeWishlist(id);
+      } else {
+        await addWishlist(id);
+      }
+    } catch {
+      setWishlistedIds((prev) => {
+        const next = new Set(prev);
+        isWishlisted ? next.add(id) : next.delete(id);
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     const params: Parameters<typeof getDestinations>[0] = {};
@@ -144,7 +172,15 @@ export default function Home() {
                         alt={item.name}
                         className="eventCard__imageTag"
                       />
-                      <span className="eventCard__fav">♡</span>
+                      <button
+                        type="button"
+                        className="eventCard__fav"
+                        aria-label={wishlistedIds.has(item.id) ? "hapus dari wishlist" : "tambah ke wishlist"}
+                        onClick={(e) => handleToggleWishlist(e, item.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                      >
+                        {wishlistedIds.has(item.id) ? "★" : "☆"}
+                      </button>
                     </div>
 
                     <div className="eventCard__body">
@@ -169,7 +205,7 @@ export default function Home() {
                             {item.start_time} - {item.end_time}
                           </div>
                           <div className="eventCard__price">
-                            Rp. {Number(item.price).toLocaleString("id-ID")}
+                            Rp. {Number(item.price).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </div>
                       </div>
