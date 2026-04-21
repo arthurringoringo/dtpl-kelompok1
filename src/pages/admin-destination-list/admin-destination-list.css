@@ -1,0 +1,532 @@
+.adminPage {
+  min-height: 100vh;
+  background: #efefef;
+}
+
+.adminLayout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 64px);
+}
+
+.adminContent {
+  padding: 28px 14px 40px 14px;
+}
+
+.adminContent__title {
+  margin: 0;
+  margin-bottom: 28px;
+  font-size: 32px;
+  font-weight: 800;
+  color: #2f2d3f;
+}
+.adminContent__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.adminContent__addButton {
+  border: none;
+  background: #2b2a42;
+  color: #ffffff;
+  height: 56px;
+  min-width: 210px;
+  padding: 0 28px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.adminContent__addButton:hover {
+  background: #232238;
+}
+
+.adminContent__addButton:active {
+  transform: translateY(1px);
+}
+.adminDestinationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.adminDestinationCard {
+  position: relative;
+  background: #efefef;
+  border: 2px solid #3b3b3b;
+  border-radius: 8px;
+  padding: 14px 64px 14px 12px; /* kanan dikasih ruang buat icon edit */
+  display: grid;
+  grid-template-columns: minmax(0, 62%) minmax(0, 38%);
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.adminDestinationCard__imageWrap {
+  position: relative;
+}
+
+.adminDestinationCard__image {
+  width: 100%;
+  height: 176px;
+  border-radius: 6px;
+  background: #bfbfbf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adminDestinationCard__placeholder {
+  font-size: 54px;
+  color: #f3f3f3;
+}
+
+.adminDestinationCard__fav {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #3b3b3b;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.adminDestinationCard__editBtn {
+  position: absolute;
+  top: 28px;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: 1px solid #3b3b3b;
+  border-radius: 8px;
+  background: #efefef;
+  color: #3b3b3b;
+  font-size: 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adminDestinationCard__editBtn:hover {
+  background: #f7f7f7;
+}
+
+.adminDestinationCard__body {
+  display: flex;
+  flex-direction: column;
+  padding-top: 2px;
+}
+
+.adminDestinationCard__title {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: #2f2d3f;
+}
+
+.adminDestinationCard__category {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #2f2d3f;
+  line-height: 1.3;
+}
+
+.adminDestinationCard__meta {
+  font-size: 15px;
+  font-weight: 700;
+  color: #555555;
+  margin-bottom: 10px;
+}
+
+.adminDestinationCard__time {
+  font-size: 14px;
+  color: #666666;
+  margin-bottom: 12px;
+}
+
+.adminDestinationCard__price {
+  font-size: 16px;
+  font-weight: 700;
+  color: #289032;
+  margin-bottom: auto;
+}
+
+.adminDestinationCard__button {
+  align-self: flex-end;
+  margin-top: 18px;
+  margin-right: 20px;
+  border: none;
+  border-radius: 8px;
+  background: #f2d33f;
+  color: #2f2d3f;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.adminDestinationCard__button:hover {
+  filter: brightness(0.98);
+}
+
+@media (max-width: 1100px) {
+  .adminDestinationGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .adminLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .adminContent {
+    padding: 22px 14px 32px;
+  }
+
+  .adminContent__title {
+    margin-bottom: 28px;
+  }
+
+  .adminDestinationCard {
+    grid-template-columns: 1fr;
+    padding-right: 56px;
+  }
+
+  .adminDestinationCard__editBtn {
+    right: 12px;
+    transform: none;
+  }
+
+  .adminDestinationCard__image {
+    height: 220px;
+  }
+
+  .adminDestinationCard__button {
+    align-self: flex-start;
+  }
+}
+
+.destinationModal__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.destinationModal {
+  position: relative;
+  width: min(1160px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 4px;
+  padding: 28px 42px 28px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.18);
+}
+
+.destinationModal__close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  color: #585858;
+  cursor: pointer;
+}
+
+.destinationModal__uploadWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.destinationModal__uploadCircle {
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: #ececef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+}
+
+.destinationModal__uploadPreview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.destinationModal__uploadIcon {
+  font-size: 34px;
+}
+
+.destinationModal__fileInput {
+  display: none;
+}
+
+.destinationModal__uploadText {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #5b5b5b;
+}
+
+.destinationModal__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.95fr);
+  gap: 34px;
+}
+
+.destinationModal__left,
+.destinationModal__right {
+  min-width: 0;
+}
+
+.destinationFieldRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.destinationFieldRow__label,
+.destinationFieldColumn__label {
+  font-size: 18px;
+  font-weight: 600;
+  color: #34333f;
+}
+
+.destinationFieldRow__input,
+.destinationFieldColumn__input,
+.destinationFieldColumn__textarea {
+  width: 100%;
+  border: 1px solid #cfcfd5;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #2f2d3f;
+  font-size: 16px;
+  padding: 12px 16px;
+  outline: none;
+}
+
+.destinationFieldRow__input:focus,
+.destinationFieldColumn__input:focus,
+.destinationFieldColumn__textarea:focus {
+  border-color: #4f7cff;
+}
+
+.destinationFieldRow__input--small {
+  max-width: 220px;
+}
+
+.destinationFieldColumn {
+  margin-bottom: 18px;
+}
+
+.destinationFieldColumn__label {
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+.destinationFieldColumn__textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+.destinationModal__error {
+  margin-top: 8px;
+  color: #c83333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.destinationModal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.destinationModal__saveBtn,
+.destinationModal__deleteBtn {
+  min-width: 236px;
+  height: 52px;
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.destinationModal__saveBtn {
+  background: #2b2a42;
+  color: #ffffff;
+}
+
+.destinationModal__deleteBtn {
+  background: #efefef;
+  color: #2f2d3f;
+}
+
+.destinationModal__saveBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 980px) {
+  .destinationModal {
+    padding: 24px 20px;
+  }
+
+  .destinationModal__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .destinationFieldRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .destinationFieldRow__input--small {
+    max-width: 100%;
+  }
+
+  .destinationModal__actions {
+    flex-direction: column;
+  }
+
+  .destinationModal__saveBtn,
+  .destinationModal__deleteBtn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.destinationFieldRow--addons {
+  align-items: start;
+}
+
+.destinationAddon {
+  width: 100%;
+}
+
+.destinationAddon__inputRow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.destinationAddon__addBtn {
+  border: none;
+  background: #2b2a42;
+  color: #ffffff;
+  min-width: 110px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.destinationAddon__addBtn:hover {
+  background: #232238;
+}
+
+.destinationAddon__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.destinationAddon__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f2f7;
+  border: 1px solid #d8dbe8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #2f2d3f;
+}
+
+.destinationAddon__removeBtn {
+  border: none;
+  background: transparent;
+  color: #666666;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+
+.destinationAddon__removeBtn:hover {
+  color: #c83333;
+}
+
+@media (max-width: 640px) {
+  .destinationAddon__inputRow {
+    flex-direction: column;
+  }
+
+  .destinationAddon__addBtn {
+    min-width: 0;
+    height: 46px;
+  }
+}
+
+.destinationModal__loading {
+  padding: 36px 0;
+  text-align: center;
+  color: #666;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.adminDestinationCard__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adminDestinationCard__iconBtn,
+.adminDestinationCard__iconBtn:hover,
+.adminDestinationCard__fav:hover {
+  background: #f3f3f7;
+}

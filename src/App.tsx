@@ -14,6 +14,8 @@ import WishlistPage from "./pages/wishlist/wishlist";
 import RiwayatPesananPage from "./pages/riwayat-pesanan/riwayat-pesanan";
 import PaymentPage from "./pages/payment/payment";
 import TicketPage from "./pages/ticket/ticket";
+import AdminDestinasiPage from "./pages/admin-destination-list/admin-destination-list";
+import AdminDashboardPage from "./pages/admin-dashboard/admin-dashboard";
 
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -30,7 +32,8 @@ export default function App() {
             <Route path="/penginapan" element={<PenginapanPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/riwayat-pesanan" element={<RiwayatPesananPage />} />
-
+            <Route path="/admin/destinasi" element={<AdminDestinasiPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
 
             <Route path="/account" element={<AccountLayout />}>
               <Route index element={<ProfileInfo />} />

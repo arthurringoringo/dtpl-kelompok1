@@ -9,7 +9,7 @@ type ApiError = {
 
 async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     credentials: "include",
@@ -25,12 +25,17 @@ async function apiFetch<T>(
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    if (response.status === 401 && !window.location.pathname.startsWith("/login")) {
+    if (
+      response.status === 401 &&
+      !window.location.pathname.startsWith("/login")
+    ) {
       window.location.href = "/login";
     }
     const err = data as ApiError | null;
     throw new Error(
-      err?.error || err?.message || `Request failed with status ${response.status}`
+      err?.error ||
+        err?.message ||
+        `Request failed with status ${response.status}`,
     );
   }
 
@@ -141,10 +146,7 @@ export async function registerUser(payload: {
 }
 
 // LOGIN
-export async function loginUser(payload: {
-  email: string;
-  password: string;
-}) {
+export async function loginUser(payload: { email: string; password: string }) {
   return apiFetch<LoginResponse>("/login", {
     method: "POST",
     body: JSON.stringify({
@@ -192,7 +194,7 @@ export async function createCategory(payload: {
 // UPDATE CATEGORY
 export async function updateCategory(
   id: string | number,
-  payload: { name: string }
+  payload: { name: string },
 ) {
   return apiFetch<Category[] | Category>(`/category/${id}`, {
     method: "PATCH",
@@ -223,7 +225,8 @@ export async function getDestinations(params?: {
 
   if (params?.day) searchParams.set("day", params.day);
   if (params?.price) searchParams.set("price", params.price);
-  if (params?.category_id) searchParams.set("category_id", String(params.category_id));
+  if (params?.category_id)
+    searchParams.set("category_id", String(params.category_id));
 
   const query = searchParams.toString();
 
@@ -343,7 +346,7 @@ export async function payNowOrder(orderId: number) {
 // CHECK PAYMENT STATUS
 export async function checkPaymentStatus(orderId: number) {
   return apiFetch<CheckPaymentStatusResponse>(
-    `/order/${orderId}/check_payment_status`
+    `/order/${orderId}/check_payment_status`,
   );
 }
 
@@ -354,7 +357,9 @@ export async function markOrderPaid(orderId: number) {
 
 // CANCEL ORDER (dummy payment integration)
 export async function cancelOrder(orderId: number) {
-  return apiFetch<OrderResponse>(`/order/${orderId}/cancel`, { method: "POST" });
+  return apiFetch<OrderResponse>(`/order/${orderId}/cancel`, {
+    method: "POST",
+  });
 }
 
 // GET PAYMENT PAGE DETAILS (public, no auth needed)
@@ -439,10 +444,83 @@ export async function getOrderHistory(id: number) {
 // CREATE ORDER VISITOR DETAILS
 export async function createOrderVisitorDetails(
   orderId: number,
-  visitors: { name: string; email: string; phone_number: string }[]
+  visitors: { name: string; email: string; phone_number: string }[],
 ) {
   return apiFetch<OrderResponse>(`/order/${orderId}/visitor_details`, {
     method: "POST",
     body: JSON.stringify({ data: visitors }),
   });
+}
+//UPDATE & CREATE DESTINATION (ADMIN)
+export type UpsertDestinationPayload = {
+  name: string;
+  descriptions: string;
+  price: number | string;
+  category_id: number;
+  address: string;
+  start_date: string;
+  end_date: string;
+  status: "active" | "inactive";
+  addons: string[];
+  image?: File | null;
+};
+
+async function uploadDestinationRequest(
+  endpoint: string,
+  method: "POST" | "PATCH",
+  payload: UpsertDestinationPayload,
+) {
+  const formData = new FormData();
+
+  formData.append("name", String(payload.name));
+  formData.append("descriptions", String(payload.descriptions));
+  formData.append("price", String(payload.price));
+  formData.append("category_id", String(payload.category_id));
+  formData.append("address", String(payload.address));
+  formData.append("start_date", String(payload.start_date));
+  formData.append("end_date", String(payload.end_date));
+  formData.append("status", String(payload.status));
+  formData.append("addons", JSON.stringify(payload.addons ?? []));
+
+  if (payload.image) {
+    formData.append("image", payload.image);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    credentials: "include",
+    body: formData,
+  });
+
+  const contentType = response.headers.get("content-type");
+  const isJson = contentType?.includes("application/json");
+  const data = isJson ? await response.json() : null;
+
+  if (!response.ok) {
+    if (
+      response.status === 401 &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      window.location.href = "/login";
+    }
+    const err = data as ApiError | null;
+    throw new Error(
+      err?.error ||
+        err?.message ||
+        `Request failed with status ${response.status}`,
+    );
+  }
+
+  return data as DestinationDetail;
+}
+
+export async function createDestination(payload: UpsertDestinationPayload) {
+  return uploadDestinationRequest("/destination", "POST", payload);
+}
+
+export async function updateDestination(
+  id: string | number,
+  payload: UpsertDestinationPayload,
+) {
+  return uploadDestinationRequest(`/destination/${id}`, "PATCH", payload);
 }
