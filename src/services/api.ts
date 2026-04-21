@@ -25,12 +25,6 @@ async function apiFetch<T>(
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    if (
-      response.status === 401 &&
-      !window.location.pathname.startsWith("/login")
-    ) {
-      window.location.href = "/login";
-    }
     const err = data as ApiError | null;
     throw new Error(
       err?.error ||
@@ -113,6 +107,29 @@ export type DestinationDetail = {
   category_name?: string;
   category?: { id: number; name: string; image_url: string | null };
   address?: string;
+  reviews?: ReviewData[];
+  average_rating?: number | string | null;
+  ai_review_summary?: {
+    generated_at: string;
+    reviews_count: number;
+    summary: string;
+  } | null;
+};
+
+export type DestinationAddOn = {
+  id: number;
+  name: string;
+  price: string; // "25000.00"
+};
+
+export type ReviewData = {
+  id: number;
+  destination_id?: number;
+  user_id?: number;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
 };
 
 /* =========================
@@ -167,6 +184,11 @@ export async function getUsers() {
   return apiFetch<UserResponse[]>("/users", {
     method: "GET",
   });
+}
+
+// GET CURRENT USER
+export async function getMe() {
+  return apiFetch<UserResponse>("/me");
 }
 
 /* =========================
@@ -238,6 +260,11 @@ export async function getDestinationById(id: string | number) {
   return apiFetch<DestinationDetail>(`/destination/${id}`);
 }
 
+// GET DESTINATION ADD-ONS
+export async function getDestinationAddOns(destinationId: number | string) {
+  return apiFetch<DestinationAddOn[]>(`/destination/${destinationId}/add_ons`);
+}
+
 /* =========================
    ACCOMMODATION API
 ========================= */
@@ -256,6 +283,26 @@ export async function getAccommodations() {
 
 export async function getAccommodationById(id: string | number) {
   return apiFetch<Accommodation>(`/accommodation/${id}`);
+}
+
+export async function createAccommodation(payload: { name: string; price: number; facilities: string[]; image_url: string }) {
+  return apiFetch<Accommodation>("/accommodation", {
+    method: "POST",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+export async function updateAccommodation(id: string | number, payload: Partial<{ name: string; price: number; facilities: string[]; image_url: string }>) {
+  return apiFetch<Accommodation>(`/accommodation/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+export async function deleteAccommodation(id: string | number) {
+  return apiFetch<{ message: string }>(`/accommodation/${id}`, {
+    method: "DELETE",
+  });
 }
 
 /* =========================
@@ -293,6 +340,9 @@ export type OrderResponse = {
     category_name: string;
   };
   order_visitor_details: OrderVisitorDetail[];
+  order_add_ons?: { id: number; name: string; price: string }[];
+  can_review?: boolean;
+  review?: ReviewData | null;
 };
 
 export type CheckPaymentStatusResponse = {
@@ -321,6 +371,7 @@ export async function createOrder(payload: {
   ticket_id: number;
   ticket_type: string;
   qty: number;
+  add_on_ids?: number[];
 }) {
   return apiFetch<OrderResponse>("/order", {
     method: "POST",
@@ -329,7 +380,7 @@ export async function createOrder(payload: {
 }
 
 // UPDATE ORDER
-export async function updateOrder(orderId: number, payload: { qty: number }) {
+export async function updateOrder(orderId: number, payload: { qty?: number; add_on_ids?: number[] }) {
   return apiFetch<OrderResponse>(`/order/${orderId}`, {
     method: "PATCH",
     body: JSON.stringify({ data: payload }),
@@ -365,6 +416,17 @@ export async function cancelOrder(orderId: number) {
 // GET PAYMENT PAGE DETAILS (public, no auth needed)
 export async function getPaymentDetails(bookingCode: string) {
   return apiFetch<PaymentPageDetails>(`/payment/${bookingCode}`);
+}
+
+// SUBMIT REVIEW
+export async function submitReview(
+  orderId: number,
+  payload: { rating: number; comment: string },
+) {
+  return apiFetch<{ message: string; data: ReviewData }>(`/order/${orderId}/review`, {
+    method: "POST",
+    body: JSON.stringify({ data: payload }),
+  });
 }
 
 /* =========================
@@ -431,6 +493,9 @@ export type OrderHistoryItem = {
     facilities?: string[];
   };
   visitor_details: OrderVisitorDetail[];
+  order_add_ons?: { id: number; name: string; price: string }[];
+  can_review?: boolean;
+  review?: ReviewData | null;
 };
 
 export async function getOrderHistories() {
@@ -439,6 +504,10 @@ export async function getOrderHistories() {
 
 export async function getOrderHistory(id: number) {
   return apiFetch<OrderHistoryItem>(`/order_history/${id}`);
+}
+
+export async function getOrderById(id: number) {
+  return apiFetch<OrderResponse>(`/order/${id}`);
 }
 
 // CREATE ORDER VISITOR DETAILS
@@ -455,72 +524,119 @@ export async function createOrderVisitorDetails(
 export type UpsertDestinationPayload = {
   name: string;
   descriptions: string;
-  price: number | string;
+  price: number;
   category_id: number;
-  address: string;
-  start_date: string;
-  end_date: string;
-  status: "active" | "inactive";
-  addons: string[];
-  image?: File | null;
+  image_url: string;
+  date: string;        // "YYYY-MM-DD"
+  start_time: string;  // "HH:MM"
+  end_time: string;    // "HH:MM"
+  latitude: number;
+  longitude: number;
+  ticket_type: string; // default "destination"
 };
 
-async function uploadDestinationRequest(
-  endpoint: string,
-  method: "POST" | "PATCH",
-  payload: UpsertDestinationPayload,
-) {
-  const formData = new FormData();
-
-  formData.append("name", String(payload.name));
-  formData.append("descriptions", String(payload.descriptions));
-  formData.append("price", String(payload.price));
-  formData.append("category_id", String(payload.category_id));
-  formData.append("address", String(payload.address));
-  formData.append("start_date", String(payload.start_date));
-  formData.append("end_date", String(payload.end_date));
-  formData.append("status", String(payload.status));
-  formData.append("addons", JSON.stringify(payload.addons ?? []));
-
-  if (payload.image) {
-    formData.append("image", payload.image);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method,
-    credentials: "include",
-    body: formData,
-  });
-
-  const contentType = response.headers.get("content-type");
-  const isJson = contentType?.includes("application/json");
-  const data = isJson ? await response.json() : null;
-
-  if (!response.ok) {
-    if (
-      response.status === 401 &&
-      !window.location.pathname.startsWith("/login")
-    ) {
-      window.location.href = "/login";
-    }
-    const err = data as ApiError | null;
-    throw new Error(
-      err?.error ||
-        err?.message ||
-        `Request failed with status ${response.status}`,
-    );
-  }
-
-  return data as DestinationDetail;
-}
-
 export async function createDestination(payload: UpsertDestinationPayload) {
-  return uploadDestinationRequest("/destination", "POST", payload);
+  return apiFetch<DestinationDetail>("/destination", {
+    method: "POST",
+    body: JSON.stringify({ data: payload }),
+  });
 }
 
 export async function updateDestination(
   id: string | number,
-  payload: UpsertDestinationPayload,
+  payload: Partial<UpsertDestinationPayload>,
 ) {
-  return uploadDestinationRequest(`/destination/${id}`, "PATCH", payload);
+  return apiFetch<DestinationDetail>(`/destination/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+export async function deleteDestination(id: string | number) {
+  return apiFetch<{ message: string }>(`/destination/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function uploadImage(file: File): Promise<string> {
+  const { upload_url, public_url } = await apiFetch<{ upload_url: string; public_url: string }>(
+    "/upload/presign",
+    {
+      method: "POST",
+      body: JSON.stringify({ data: { content_type: file.type } }),
+    },
+  );
+  await fetch(upload_url, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type,
+      "x-amz-acl": "public-read",
+    },
+  });
+  return public_url;
+}
+
+/* =========================
+   ADMIN DASHBOARD API
+========================= */
+
+export type AdminDashboardResponse = {
+  period: { type: string; start_date: string; end_date: string };
+  summary: { total_sales: number; total_orders: number; active_destinations: number };
+  chart: { destination_id: number; name: string; total_sales: number; total_orders: number }[];
+};
+
+export type DestinationBuyerItem = {
+  order_id: number;
+  booking_code: string;
+  buyer_name: string;
+  buyer_email: string;
+  qty: number;
+  purchased_at: string;
+  order_total: number;
+  status: string;
+};
+
+export type DestinationBuyersResponse = {
+  destination: { id: number; name: string };
+  data: DestinationBuyerItem[];
+  meta: { page: number; per_page: number; total: number };
+};
+
+export async function getAdminDashboard(params?: {
+  period?: "daily" | "weekly" | "monthly";
+  start_date?: string;
+  end_date?: string;
+}) {
+  const q = new URLSearchParams();
+  if (params?.period) q.set("period", params.period);
+  if (params?.start_date) q.set("start_date", params.start_date);
+  if (params?.end_date) q.set("end_date", params.end_date);
+  return apiFetch<AdminDashboardResponse>(`/admin/dashboard${q.toString() ? `?${q}` : ""}`);
+}
+
+export async function getDestinationBuyers(
+  destinationId: number | string,
+  params?: {
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+    sort?: "created_at" | "order_total";
+    direction?: "asc" | "desc";
+    page?: number;
+    per_page?: number;
+  },
+) {
+  const q = new URLSearchParams();
+  if (params?.status) q.set("status", params.status);
+  if (params?.start_date) q.set("start_date", params.start_date);
+  if (params?.end_date) q.set("end_date", params.end_date);
+  if (params?.sort) q.set("sort", params.sort);
+  if (params?.direction) q.set("direction", params.direction);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
+  return apiFetch<DestinationBuyersResponse>(
+    `/admin/destination/${destinationId}/buyers${q.toString() ? `?${q}` : ""}`,
+  );
 }

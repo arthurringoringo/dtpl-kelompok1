@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getOrderHistories, getOrderHistory } from "../../services/api";
-import type { OrderHistoryItem } from "../../services/api";
+import { getOrderHistories, getOrderHistory, submitReview } from "../../services/api";
+import type { OrderHistoryItem, ReviewData } from "../../services/api";
 import "./riwayat-pesanan.css";
 
 const FALLBACK_DESTINATION =
@@ -10,20 +10,13 @@ const FALLBACK_ACCOMMODATION =
   "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=600&auto=format&fit=crop";
 
 function formatRupiah(value: string | number) {
-  return `Rp. ${Number(value).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `Rp. ${Number(value).toLocaleString("id-ID")}`;
 }
 
 function formatOrderDate(isoDate: string) {
   const d = new Date(isoDate);
-  const date = d.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const time = d.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const date = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
   return `${date} ${time}`;
 }
 
@@ -35,6 +28,20 @@ function statusClass(status: string) {
   return "pending";
 }
 
+function statusLabel(sc: string) {
+  if (sc === "paid") return "PAID";
+  if (sc === "pending") return "UNPAID";
+  if (sc === "failed") return "REJECTED";
+  return "DRAFT";
+}
+
+const STATUS_FILTER_OPTIONS = [
+  { key: "paid", label: "PAID" },
+  { key: "pending", label: "UNPAID" },
+  { key: "failed", label: "REJECTED" },
+  { key: "draft", label: "DRAFT" },
+];
+
 export default function RiwayatPesananPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
@@ -44,6 +51,18 @@ export default function RiwayatPesananPage() {
   const [detailMap, setDetailMap] = useState<Record<number, OrderHistoryItem>>({});
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // ── filters ──
+  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
+  // ── review modal ──
+  const [reviewModal, setReviewModal] = useState<{ orderId: number } | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+
   useEffect(() => {
     getOrderHistories()
       .then(setOrders)
@@ -52,13 +71,44 @@ export default function RiwayatPesananPage() {
   }, []);
 
   const filteredOrders = useMemo(() => {
+    let result = orders;
     const search = keyword.trim().toLowerCase();
-    if (!search) return orders;
-    return orders.filter((order) =>
-      order.booking_code.toLowerCase().includes(search) ||
-      order.order_item.name.toLowerCase().includes(search)
-    );
-  }, [keyword, orders]);
+    if (search) {
+      result = result.filter(
+        (o) =>
+          o.booking_code.toLowerCase().includes(search) ||
+          o.order_item.name.toLowerCase().includes(search),
+      );
+    }
+    if (filterStatus.size > 0) {
+      result = result.filter((o) => filterStatus.has(statusClass(o.status)));
+    }
+    if (filterStartDate) {
+      const start = new Date(filterStartDate).getTime();
+      result = result.filter((o) => new Date(o.created_at).getTime() >= start);
+    }
+    if (filterEndDate) {
+      const end = new Date(filterEndDate + "T23:59:59").getTime();
+      result = result.filter((o) => new Date(o.created_at).getTime() <= end);
+    }
+    return result;
+  }, [orders, keyword, filterStatus, filterStartDate, filterEndDate]);
+
+  const hasFilter = filterStatus.size > 0 || filterStartDate || filterEndDate;
+
+  const clearFilters = () => {
+    setFilterStatus(new Set());
+    setFilterStartDate("");
+    setFilterEndDate("");
+  };
+
+  const toggleStatusFilter = (key: string) => {
+    setFilterStatus((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   const handleResume = (order: OrderHistoryItem) => {
     if (order.order_item.type === "accommodation") {
@@ -77,10 +127,7 @@ export default function RiwayatPesananPage() {
   };
 
   const handleToggleDetail = async (order: OrderHistoryItem) => {
-    if (expandedId === order.id) {
-      setExpandedId(null);
-      return;
-    }
+    if (expandedId === order.id) { setExpandedId(null); return; }
     setExpandedId(order.id);
     if (detailMap[order.id]) return;
     setLoadingDetail(true);
@@ -88,7 +135,6 @@ export default function RiwayatPesananPage() {
       const detail = await getOrderHistory(order.id);
       setDetailMap((prev) => ({ ...prev, [order.id]: detail }));
     } catch {
-      // fall back to list data if detail fetch fails
       setDetailMap((prev) => ({ ...prev, [order.id]: order }));
     } finally {
       setLoadingDetail(false);
@@ -96,175 +142,225 @@ export default function RiwayatPesananPage() {
   };
 
   return (
-    <main className="orderHistory">
-      <section className="orderHistory__hero">
-        <div className="container">
-          <h1 className="orderHistory__title">Riwayat Pesanan</h1>
-
-          <div className="orderHistory__searchWrap">
-            <span className="orderHistory__searchIcon">⌕</span>
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="orderHistory__searchInput"
-              placeholder="Cari Order ID atau nama destinasi..."
-            />
-            {keyword && (
-              <button
-                type="button"
-                className="orderHistory__clearBtn"
-                onClick={() => setKeyword("")}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+    <main className="riwayat">
+      {/* ── Hero ── */}
+      <section className="riwayat__hero">
+        <h1 className="riwayat__heroTitle">Riwayat Pesanan</h1>
+        <div className="riwayat__searchWrap">
+          <span className="riwayat__searchIcon">⌕</span>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            className="riwayat__searchInput"
+            placeholder="Order ID"
+          />
+          {keyword && (
+            <button type="button" className="riwayat__clearBtn" onClick={() => setKeyword("")}>✕</button>
+          )}
         </div>
       </section>
 
-      <section className="orderHistory__content">
-        <div className="container orderHistory__list">
+      {/* ── Body ── */}
+      <div className="riwayat__body container">
+
+        {/* ── Filter sidebar ── */}
+        <aside className="riwayat__filter">
+          <div className="riwayat__filterTitle">FILTER</div>
+
+          <div className="riwayat__filterGroup">
+            <div className="riwayat__filterLabel">STATUS</div>
+            {STATUS_FILTER_OPTIONS.map((opt) => (
+              <label key={opt.key} className="riwayat__filterCheck">
+                <input
+                  type="checkbox"
+                  checked={filterStatus.has(opt.key)}
+                  onChange={() => toggleStatusFilter(opt.key)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="riwayat__filterGroup">
+            <div className="riwayat__filterLabel">DATE</div>
+            <div className="riwayat__filterDateLabel">START DATE</div>
+            <input
+              type="date"
+              className="riwayat__filterDate"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+            />
+            <div className="riwayat__filterDateLabel">END DATE</div>
+            <input
+              type="date"
+              className="riwayat__filterDate"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+            />
+          </div>
+
+          {hasFilter && (
+            <button type="button" className="riwayat__clearFilter" onClick={clearFilters}>
+              Hapus Filter
+            </button>
+          )}
+        </aside>
+
+        {/* ── Order list ── */}
+        <section className="riwayat__list">
           {loading ? (
-            <div className="orderHistory__empty">Memuat...</div>
+            <div className="riwayat__empty">Memuat...</div>
           ) : filteredOrders.length === 0 ? (
-            <div className="orderHistory__empty">Pesanan tidak ditemukan.</div>
+            <div className="riwayat__empty">Pesanan tidak ditemukan.</div>
           ) : (
             filteredOrders.map((order) => {
+              const sc = statusClass(order.status);
               const isExpanded = expandedId === order.id;
               const detail = detailMap[order.id];
+              const fallback = order.order_item.type === "accommodation" ? FALLBACK_ACCOMMODATION : FALLBACK_DESTINATION;
 
               return (
-                <article className="orderHistory__card" key={order.id}>
-                  <div className="orderHistory__badgeRow">
-                    <span
-                      className={`orderHistory__badge orderHistory__badge--${statusClass(order.status)}`}
-                    >
-                      {order.status}
+                <article key={order.id} className="riwayat__card">
+                  {/* Status badge */}
+                  <div className={`riwayat__badge riwayat__badge--${sc}`}>
+                    {statusLabel(sc)}
+                  </div>
+
+                  {/* Meta row */}
+                  <div className="riwayat__meta">
+                    <span>{formatOrderDate(order.created_at)}</span>
+                    <span className="riwayat__metaDivider">|</span>
+                    <span>Order ID: <strong>{order.booking_code}</strong></span>
+                    <span className="riwayat__metaTotal">
+                      Total: <strong className="riwayat__metaTotalValue">{formatRupiah(order.order_total)}</strong>
                     </span>
-                    {statusClass(order.status) === "draft" && (
-                      <button
-                        type="button"
-                        className="orderHistory__resumeBtn"
-                        onClick={() => handleResume(order)}
-                      >
-                        Lanjutkan Pesanan →
-                      </button>
-                    )}
-                    {statusClass(order.status) === "paid" && (
-                      <button
-                        type="button"
-                        className="orderHistory__ticketBtn"
-                        onClick={() => window.open(`/ticket/${order.booking_code}`, "_blank")}
-                      >
-                        🎟 Lihat Tiket
-                      </button>
-                    )}
-                    {statusClass(order.status) === "pending" && (
-                      <button
-                        type="button"
-                        className="orderHistory__payBtn"
-                        onClick={() => handleContinuePayment(order)}
-                      >
-                        ⏳ Lanjutkan Pembayaran
-                      </button>
-                    )}
                   </div>
 
-                  <div className="orderHistory__topRow">
-                    <div className="orderHistory__meta">
-                      <span>{formatOrderDate(order.created_at)}</span>
-                      <span className="orderHistory__divider">|</span>
-                      <span>Order ID: {order.booking_code}</span>
-                    </div>
-
-                    <div className="orderHistory__total">
-                      <span className="orderHistory__totalLabel">Total:</span>
-                      <span className="orderHistory__totalValue">
-                        {formatRupiah(order.order_total)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="orderHistory__detailCard">
-                    <div className="orderHistory__detailGrid">
-                      <div className="orderHistory__thumb">
-                        <button
-                          type="button"
-                          className="orderHistory__thumbClose"
-                          onClick={() => handleToggleDetail(order)}
-                          aria-label={isExpanded ? "Tutup detail" : "Lihat detail"}
-                        >
-                          {isExpanded ? "▲" : "▼"}
-                        </button>
+                  {/* Content box */}
+                  <div className="riwayat__content">
+                    <div className="riwayat__contentInner">
+                      {/* Thumbnail */}
+                      <div className="riwayat__thumb">
                         <img
-                          src={order.order_item.image_url ?? (order.order_item.type === "accommodation" ? FALLBACK_ACCOMMODATION : FALLBACK_DESTINATION)}
+                          src={order.order_item.image_url ?? fallback}
                           alt={order.order_item.name}
-                          className="orderHistory__thumbImage"
-                          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              order.order_item.type === "accommodation" ? FALLBACK_ACCOMMODATION : FALLBACK_DESTINATION;
-                          }}
+                          className="riwayat__thumbImg"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallback; }}
                         />
+                        {order.review != null && (
+                          <span className="riwayat__reviewed" title="Sudah diulas">★</span>
+                        )}
                       </div>
 
-                      <div className="orderHistory__detailText">
-                        <div className="orderHistory__packageTitle">
-                          {order.order_item.name}
+                      {/* Info */}
+                      <div className="riwayat__info">
+                        <div className="riwayat__infoName">{order.order_item.name}</div>
+                        <div className="riwayat__infoCategory">
+                          {order.order_item.type === "accommodation" ? "Penginapan" : order.order_item.category_name}
                         </div>
                         {order.order_item.type === "accommodation" ? (
-                          <>
-                            <div className="orderHistory__packageCategory">Penginapan</div>
-                            {order.order_item.facilities && order.order_item.facilities.length > 0 && (
-                              <div className="orderHistory__packageMeta">
-                                {order.order_item.facilities.join(" · ")}
-                              </div>
-                            )}
-                            <div className="orderHistory__packageTime">
-                              {order.qty} Malam
-                            </div>
-                          </>
+                          <div className="riwayat__infoMeta">{order.qty} Malam</div>
                         ) : (
                           <>
-                            <div className="orderHistory__packageCategory">
-                              {order.order_item.category_name}
-                            </div>
-                            <div className="orderHistory__packageMeta">
-                              {order.order_item.date}
-                            </div>
-                            <div className="orderHistory__packageTime">
-                              {order.order_item.start_time} - {order.order_item.end_time}
-                            </div>
+                            <div className="riwayat__infoMeta">{order.order_item.date}</div>
+                            <div className="riwayat__infoTime">{order.order_item.start_time} - {order.order_item.end_time}</div>
+                            <div className="riwayat__infoMeta">{order.qty} Tiket</div>
                           </>
                         )}
                       </div>
                     </div>
+
+                    {/* Action buttons */}
+                    <div className="riwayat__actions">
+                      {sc === "draft" && (
+                        <button type="button" className="riwayat__btn riwayat__btn--primary" onClick={() => handleResume(order)}>
+                          Lanjutkan Pesanan
+                        </button>
+                      )}
+                      {sc === "pending" && (
+                        <button type="button" className="riwayat__btn riwayat__btn--primary" onClick={() => handleContinuePayment(order)}>
+                          Lanjutkan Pembayaran
+                        </button>
+                      )}
+                      {(sc === "paid" || sc === "failed") && (
+                        <button
+                          type="button"
+                          className="riwayat__btn riwayat__btn--primary"
+                          onClick={() => handleToggleDetail(order)}
+                        >
+                          {isExpanded ? "Tutup Detail" : "Lihat Detail"}
+                        </button>
+                      )}
+                      {sc === "paid" && order.can_review === true && (
+                        <button
+                          type="button"
+                          className="riwayat__btn riwayat__btn--review"
+                          onClick={() => {
+                            setReviewModal({ orderId: order.id });
+                            setRating(0);
+                            setComment("");
+                            setReviewError("");
+                          }}
+                        >
+                          Beri Ulasan
+                        </button>
+                      )}
+                      {sc === "paid" && (
+                        <button
+                          type="button"
+                          className="riwayat__btn riwayat__btn--ticket"
+                          onClick={() => window.open(`/ticket/${order.booking_code}`, "_blank")}
+                        >
+                          🎟 Tiket
+                        </button>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Expanded visitor detail */}
                   {isExpanded && (
-                    <div className="orderHistory__visitorSection">
+                    <div className="riwayat__detail">
                       {loadingDetail && !detail ? (
-                        <div className="orderHistory__visitorLoading">Memuat detail...</div>
-                      ) : detail && detail.visitor_details.length > 0 ? (
+                        <p className="riwayat__detailLoading">Memuat detail...</p>
+                      ) : detail ? (
                         <>
-                          <div className="orderHistory__visitorTitle">Detail Pengunjung</div>
-                          {detail.visitor_details.map((v, i) => (
-                            <div key={v.id} className="orderHistory__visitorCard">
-                              <div className="orderHistory__visitorNo">Pengunjung #{i + 1}</div>
-                              <div className="orderHistory__visitorName">{v.name}</div>
-                              <div className="orderHistory__visitorEmail">{v.email}</div>
-                              <div className="orderHistory__visitorPhone">{v.phone_number}</div>
-                            </div>
-                          ))}
-                          <div className="orderHistory__summaryRow">
+                          {detail.visitor_details.length > 0 && (
+                            <>
+                              <div className="riwayat__detailTitle">Detail Pengunjung</div>
+                              <div className="riwayat__visitorGrid">
+                                {detail.visitor_details.map((v, i) => (
+                                  <div key={v.id} className="riwayat__visitorCard">
+                                    <div className="riwayat__visitorNo">Pengunjung #{i + 1}</div>
+                                    <div className="riwayat__visitorName">{v.name}</div>
+                                    <div className="riwayat__visitorSub">{v.email}</div>
+                                    <div className="riwayat__visitorSub">{v.phone_number}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {detail.order_add_ons && detail.order_add_ons.length > 0 && (
+                            <>
+                              <div className="riwayat__detailTitle" style={{ marginTop: detail.visitor_details.length > 0 ? 12 : 0 }}>Add-ons</div>
+                              <div className="riwayat__addonList">
+                                {detail.order_add_ons.map((addon) => (
+                                  <div key={addon.id} className="riwayat__addonItem">
+                                    <span>{addon.name}</span>
+                                    <span className="riwayat__addonPrice">+{formatRupiah(addon.price)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          <div className="riwayat__detailSummary">
                             <span>Qty: <strong>{detail.qty}</strong></span>
                             <span>Sub Total: <strong>{formatRupiah(detail.sub_total)}</strong></span>
                             <span>Tax: <strong>{formatRupiah(detail.tax)}</strong></span>
                           </div>
                         </>
                       ) : (
-                        <div className="orderHistory__visitorLoading">Belum ada detail pengunjung.</div>
+                        <p className="riwayat__detailLoading">Belum ada detail pengunjung.</p>
                       )}
                     </div>
                   )}
@@ -272,8 +368,65 @@ export default function RiwayatPesananPage() {
               );
             })
           )}
+        </section>
+      </div>
+
+      {/* ── Review Modal ── */}
+      {reviewModal !== null && (
+        <div className="reviewModal__overlay" onClick={() => setReviewModal(null)}>
+          <div className="reviewModal" onClick={(e) => e.stopPropagation()}>
+            <div className="reviewModal__header">
+              <span className="reviewModal__title">Beri Ulasan</span>
+              <button type="button" className="reviewModal__close" onClick={() => setReviewModal(null)}>✕</button>
+            </div>
+
+            <div className="reviewModal__label">RATING</div>
+            <div className="reviewModal__stars">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button key={star} type="button" className="reviewModal__star" onClick={() => setRating(star)} aria-label={`${star} bintang`}>
+                  {star <= rating ? "★" : "☆"}
+                </button>
+              ))}
+            </div>
+
+            <div className="reviewModal__label">ULASAN</div>
+            <textarea
+              className="reviewModal__textarea"
+              placeholder="Bagikan pengalaman Anda di sini..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={4}
+            />
+
+            {reviewError && <div className="reviewModal__error">{reviewError}</div>}
+
+            <button
+              type="button"
+              className="reviewModal__submit"
+              disabled={reviewSubmitting}
+              onClick={async () => {
+                if (rating === 0) { setReviewError("Pilih rating terlebih dahulu"); return; }
+                setReviewError("");
+                setReviewSubmitting(true);
+                const capturedOrderId = reviewModal.orderId;
+                try {
+                  const result: { message: string; data: ReviewData } = await submitReview(capturedOrderId, { rating, comment });
+                  setOrders((prev) =>
+                    prev.map((o) => o.id === capturedOrderId ? { ...o, can_review: false, review: result.data } : o)
+                  );
+                  setReviewModal(null);
+                } catch (err) {
+                  setReviewError(err instanceof Error ? err.message : "Gagal mengirim ulasan.");
+                } finally {
+                  setReviewSubmitting(false);
+                }
+              }}
+            >
+              {reviewSubmitting ? "Mengirim..." : "KIRIM ULASAN"}
+            </button>
+          </div>
         </div>
-      </section>
+      )}
     </main>
   );
 }

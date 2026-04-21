@@ -7,7 +7,7 @@ import { clearSession } from "../utils/auth";
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const { isLoggedIn, setLoggedIn } = useAuth();
+  const { isLoggedIn, setLoggedIn, role, refreshUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -20,6 +20,14 @@ export default function Navbar() {
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  const handleAdminClick = async () => {
+    const latestRole = await refreshUser();
+    if (latestRole === "admin") {
+      setOpen(false);
+      navigate("/admin/dashboard");
+    }
+  };
 
   const logout = async () => {
     await logoutUser();
@@ -131,6 +139,15 @@ export default function Navbar() {
                     >
                       Pengaturan Akun
                     </button>
+                    {role === "admin" && (
+                      <button
+                        className="profileItem"
+                        type="button"
+                        onClick={handleAdminClick}
+                      >
+                        Admin Backoffice
+                      </button>
+                    )}
                     <button
                       className="profileItem profileItem--danger"
                       type="button"

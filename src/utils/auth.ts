@@ -6,14 +6,13 @@ export type User = {
 };
 
 type SessionData = {
-  email: string;
+  email?: string;
   id?: number;
   full_name?: string;
   name?: string;
   role?: string;
   phone_number?: string | null;
   phone?: string | null;
-  password?: string;
 };
 
 const USERS_KEY = "dummy_users";
@@ -28,8 +27,8 @@ export async function getSessionUser(): Promise<User | null> {
 
   return {
     name: data.full_name ?? data.name ?? "",
-    email: data.email,
-    password: data.password ?? "",
+    email: data.email ?? "",
+    password: "",
     phone: data.phone_number ?? data.phone ?? undefined,
   };
 }

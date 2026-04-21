@@ -16,6 +16,8 @@ import PaymentPage from "./pages/payment/payment";
 import TicketPage from "./pages/ticket/ticket";
 import AdminDestinasiPage from "./pages/admin-destination-list/admin-destination-list";
 import AdminDashboardPage from "./pages/admin-dashboard/admin-dashboard";
+import AdminDestinationBuyersPage from "./pages/admin-destination-buyers/admin-destination-buyers";
+import AdminAccommodationPage from "./pages/admin-accommodation-list/admin-accommodation-list";
 
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -34,6 +36,8 @@ export default function App() {
             <Route path="/riwayat-pesanan" element={<RiwayatPesananPage />} />
             <Route path="/admin/destinasi" element={<AdminDestinasiPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/destinasi/:id/pembeli" element={<AdminDestinationBuyersPage />} />
+            <Route path="/admin/penginapan" element={<AdminAccommodationPage />} />
 
             <Route path="/account" element={<AccountLayout />}>
               <Route index element={<ProfileInfo />} />

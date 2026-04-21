@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import {
   getDestinationById,
+  getDestinationAddOns,
   createOrder,
   updateOrder,
   createOrderVisitorDetails,
@@ -12,7 +13,7 @@ import {
   addWishlist,
   removeWishlist,
 } from "../../services/api";
-import type { DestinationDetail, OrderResponse, OrderHistoryItem } from "../../services/api";
+import type { DestinationDetail, DestinationAddOn, OrderResponse, OrderHistoryItem } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import Reveal from "../../components/reveal";
 import "./paket-detail.css";
@@ -65,6 +66,10 @@ function emptyVisitor(): VisitorForm {
   return { name: "", email: "", phone_number: "" };
 }
 
+function stripMarkdownHeading(text: string): string {
+  return text.replace(/^#+\s+.+(\n|$)+/, "").trim();
+}
+
 export default function PaketDetailPage() {
   const { id } = useParams();
   const { isLoggedIn } = useAuth();
@@ -100,6 +105,16 @@ export default function PaketDetailPage() {
   const [visitors, setVisitors] = useState<VisitorForm[]>([emptyVisitor()]);
   const [bookingTime] = useState(() => new Date());
 
+  // ── add-ons ──
+  const [addOns, setAddOns] = useState<DestinationAddOn[]>([]);
+  const [selectedAddOnIds, setSelectedAddOnIds] = useState<number[]>([]);
+
+  // ── reviews ──
+  const [reviewPage, setReviewPage] = useState(1);
+  const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
+  const [reviewsCollapsed, setReviewsCollapsed] = useState(false);
+  const REVIEWS_PER_PAGE = 3;
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -108,6 +123,9 @@ export default function PaketDetailPage() {
       .catch(() => { setNotFound(true); setLoading(false); });
     getWishlists()
       .then((items) => setIsWishlisted(items.some((i) => i.id === Number(id))))
+      .catch(() => { });
+    getDestinationAddOns(id)
+      .then((data) => setAddOns(data))
       .catch(() => { });
   }, [id]);
 
@@ -210,11 +228,13 @@ export default function PaketDetailPage() {
     setVisitors([emptyVisitor()]);
     setOrderData(null);
     setApiError("");
+    setSelectedAddOnIds([]);
     setIsModalOpen(true);
     document.body.style.overflow = "hidden";
   };
 
   const closeModal = () => {
+    setSelectedAddOnIds([]);
     setIsModalOpen(false);
     document.body.style.overflow = "auto";
   };
@@ -241,6 +261,7 @@ export default function PaketDetailPage() {
           ticket_id: destination.id,
           ticket_type: "destination",
           qty,
+          add_on_ids: selectedAddOnIds.length ? selectedAddOnIds : undefined,
         });
       }
       setOrderData(res);
@@ -522,6 +543,172 @@ export default function PaketDetailPage() {
                     <p className="paketDetail__paragraph">{destination.descriptions}</p>
                   </section>
                 </Reveal>
+
+                {addOns.length > 0 && (
+                  <Reveal>
+                    <section className="paketDetail__section">
+                      <h2 className="paketDetail__heading">Add-ons Tersedia</h2>
+                      <div className="addonInfo__list">
+                        {addOns.map((addon) => (
+                          <div key={addon.id} className="addonInfo__item">
+                            <span className="addonInfo__name">{addon.name}</span>
+                            <span className="addonInfo__price">+Rp {Number(addon.price).toLocaleString("id-ID")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </Reveal>
+                )}
+
+                <Reveal>
+                  <section className="reviewSection">
+                    <button
+                      type="button"
+                      className="reviewSection__header"
+                      onClick={() => setReviewsCollapsed((p) => !p)}
+                    >
+                      <span className="reviewSection__title">
+                        Ulasan &amp; Penilaian
+                        <span className="reviewSection__count">({(destination.reviews ?? []).length} ulasan)</span>
+                        {destination.average_rating != null && Number(destination.average_rating) > 0 && (
+                          <span className="reviewSection__avgRating">
+                            ★ {Number(destination.average_rating).toFixed(1)}
+                          </span>
+                        )}
+                      </span>
+                      <span className={`reviewSection__chevron${reviewsCollapsed ? " reviewSection__chevron--collapsed" : ""}`}>▾</span>
+                    </button>
+
+                    {!reviewsCollapsed && (
+                      <>
+                        {/* ── AI Summary Card ── */}
+                        {(() => {
+                          const ai = destination.ai_review_summary;
+                          if (!ai) return null;
+                          if (ai.reviews_count >= 4 && ai.summary) {
+                            return (
+                              <div className="aiSummary aiSummary--full">
+                                <div className="aiSummary__heading">
+                                  <span className="aiSummary__spark">✦</span>
+                                  Ringkasan AI dari {ai.reviews_count} Ulasan
+                                </div>
+                                <div className="aiSummary__divider" />
+                                <p className="aiSummary__text">{stripMarkdownHeading(ai.summary)}</p>
+                                <div className="aiSummary__footer">🤖 Dihasilkan secara otomatis oleh AI</div>
+                              </div>
+                            );
+                          }
+                          if (ai.reviews_count < 4) {
+                            return (
+                              <div className="aiSummary aiSummary--muted">
+                                <div className="aiSummary__muteLabel">✦ Ringkasan AI</div>
+                                <p className="aiSummary__muteText">
+                                  ⚠️ Belum cukup data untuk membuat ringkasan otomatis. Minimal 4 review diperlukan. Saat ini hanya ada {ai.reviews_count} ulasan dari pengguna.
+                                </p>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="aiSummary aiSummary--muted">
+                              <div className="aiSummary__muteLabel">✦ Ringkasan AI</div>
+                              <p className="aiSummary__muteText">
+                                🔌 Ringkasan tidak tersedia saat ini. Kami mengalami gangguan teknis. Silakan coba lagi nanti.
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {(destination.reviews ?? []).length === 0 ? (
+                          <p className="reviewSection__empty">Belum ada ulasan untuk destinasi ini.</p>
+                        ) : (
+                          <>
+                            <div className="reviewSection__list">
+                              {(destination.reviews ?? [])
+                                .slice((reviewPage - 1) * REVIEWS_PER_PAGE, reviewPage * REVIEWS_PER_PAGE)
+                                .map((r) => {
+                                  const isExpanded = expandedReviews.has(r.id);
+                                  const SHORT_LIMIT = 200;
+                                  const needsTruncate = r.comment.length > SHORT_LIMIT;
+                                  const displayText = needsTruncate && !isExpanded
+                                    ? r.comment.slice(0, SHORT_LIMIT) + "…"
+                                    : r.comment;
+                                  const dateStr = new Date(r.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+                                  const initials = r.user_name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+                                  return (
+                                    <div key={r.id} className="reviewCard">
+                                      <div className="reviewCard__top">
+                                        <div className="reviewCard__avatar">{initials}</div>
+                                        <div className="reviewCard__meta">
+                                          <span className="reviewCard__name">{r.user_name}</span>
+                                          <span className="reviewCard__date">{dateStr}</span>
+                                        </div>
+                                        <div className="reviewCard__stars">
+                                          {Array.from({ length: 5 }).map((_, i) => (
+                                            <span key={i} className={i < r.rating ? "reviewStar--filled" : "reviewStar--empty"}>★</span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <p className="reviewCard__comment">{displayText}</p>
+                                      {needsTruncate && (
+                                        <button
+                                          type="button"
+                                          className="reviewCard__readMore"
+                                          onClick={() =>
+                                            setExpandedReviews((prev) => {
+                                              const next = new Set(prev);
+                                              isExpanded ? next.delete(r.id) : next.add(r.id);
+                                              return next;
+                                            })
+                                          }
+                                        >
+                                          {isExpanded ? "Show Less" : "Read More"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+
+                            {(() => {
+                              const allReviews = destination.reviews ?? [];
+                              const totalPages = Math.ceil(allReviews.length / REVIEWS_PER_PAGE);
+                              if (totalPages <= 1) return null;
+                              return (
+                                <div className="reviewSection__pagination">
+                                  <span className="reviewSection__paginationInfo">
+                                    Showing {(reviewPage - 1) * REVIEWS_PER_PAGE + 1}–{Math.min(reviewPage * REVIEWS_PER_PAGE, allReviews.length)} of {allReviews.length}
+                                  </span>
+                                  <div className="reviewSection__paginationBtns">
+                                    <button
+                                      type="button"
+                                      className="reviewSection__pageBtn"
+                                      disabled={reviewPage === 1}
+                                      onClick={() => setReviewPage((p) => p - 1)}
+                                    >‹</button>
+                                    {Array.from({ length: totalPages }, (_, i) => (
+                                      <button
+                                        key={i + 1}
+                                        type="button"
+                                        className={`reviewSection__pageBtn${reviewPage === i + 1 ? " reviewSection__pageBtn--active" : ""}`}
+                                        onClick={() => setReviewPage(i + 1)}
+                                      >{i + 1}</button>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      className="reviewSection__pageBtn"
+                                      disabled={reviewPage === totalPages}
+                                      onClick={() => setReviewPage((p) => p + 1)}
+                                    >›</button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </section>
+                </Reveal>
               </div>
 
               <aside className="paketDetail__right">
@@ -595,6 +782,29 @@ export default function PaketDetailPage() {
                       </div>
                     </div>
                   </div>
+
+                  {addOns.length > 0 && (
+                    <div className="addOnSection">
+                      <div className="addOnSection__label">Add-on Tersedia</div>
+                      {addOns.map((addon) => (
+                        <label key={addon.id} className="addOnItem">
+                          <input
+                            type="checkbox"
+                            checked={selectedAddOnIds.includes(addon.id)}
+                            onChange={() => {
+                              setSelectedAddOnIds((prev) =>
+                                prev.includes(addon.id)
+                                  ? prev.filter((x) => x !== addon.id)
+                                  : [...prev, addon.id]
+                              );
+                            }}
+                          />
+                          <span className="addOnItem__name">{addon.name}</span>
+                          <span className="addOnItem__price">+Rp {Number(addon.price).toLocaleString("id-ID")}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
 
                   {apiError && <div className="bookingModal__error">{apiError}</div>}
                 </div>

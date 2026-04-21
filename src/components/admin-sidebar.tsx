@@ -21,6 +21,15 @@ export default function AdminSidebar() {
       >
         Destinasi
       </NavLink>
+
+      <NavLink
+        to="/admin/penginapan"
+        className={({ isActive }) =>
+          "adminSidebar__item" + (isActive ? " adminSidebar__item--active" : "")
+        }
+      >
+        Penginapan
+      </NavLink>
     </aside>
   );
 }

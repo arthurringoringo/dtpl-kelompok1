@@ -21,7 +21,7 @@ export default function Register() {
     try {
       const registerRes = await registerUser({ full_name: fullName, email, password });
       await loginUser({ email, password });
-      setSession({ ...registerRes, password });
+      setSession({ id: registerRes.id, role: registerRes.role, full_name: registerRes.full_name, email: registerRes.email });
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrasi gagal");

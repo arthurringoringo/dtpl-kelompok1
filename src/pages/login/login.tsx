@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./login.css";
 import logo from "../../assets/logo.png";
-import { loginUser } from "../../services/api";
+import { loginUser, getMe } from "../../services/api";
 import { setSession } from "../../utils/auth";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -23,7 +23,8 @@ export default function Login() {
 
     try {
       const res = await loginUser({ email, password });
-      setSession({ ...res, email: res.email ?? email, password });
+      const me = await getMe();
+      setSession({ id: me.id, role: me.role, full_name: me.full_name, email: me.email ?? res.email ?? email });
       setLoggedIn(true);
       navigate("/");
     } catch (err) {

@@ -353,6 +353,22 @@
   color: #2f2d3f;
 }
 
+.dashboardRankingItem__id {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.dashboardRankingItem--clickable {
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-radius: 6px;
+}
+
+.dashboardRankingItem--clickable:hover {
+  background: #f3f4f6;
+}
+
 .dashboardRankingItem__meta {
   font-size: 12px;
   color: #7a7888;

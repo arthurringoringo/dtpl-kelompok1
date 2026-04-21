@@ -35,7 +35,7 @@ export default function ChangePassword() {
 
     try {
       const updated = await updateProfile({ password: newPw });
-      setSession({ ...updated, password: newPw });
+      setSession({ id: updated.id, role: updated.role, full_name: updated.full_name, email: updated.email });
       setUser({
         name: updated.full_name ?? updated.name ?? user.name,
         email: updated.email,
