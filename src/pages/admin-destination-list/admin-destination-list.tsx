@@ -42,6 +42,7 @@ function formatRupiah(value: number) {
 }
 
 function formatCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
   if (!digits) return "";
   return Number(digits).toLocaleString("id-ID");
 }
