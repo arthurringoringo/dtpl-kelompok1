@@ -583,9 +583,9 @@ export default function PaketDetailPage() {
                       <>
                         {/* ── AI Summary Card ── */}
                         {(() => {
+                          const reviewCount = (destination.reviews ?? []).length;
                           const ai = destination.ai_review_summary;
-                          if (!ai) return null;
-                          if (ai.reviews_count >= 4 && ai.summary) {
+                          if (reviewCount >= 4 && ai?.summary) {
                             return (
                               <div className="aiSummary aiSummary--full">
                                 <div className="aiSummary__heading">
@@ -598,21 +598,11 @@ export default function PaketDetailPage() {
                               </div>
                             );
                           }
-                          if (ai.reviews_count < 4) {
-                            return (
-                              <div className="aiSummary aiSummary--muted">
-                                <div className="aiSummary__muteLabel">✦ Ringkasan AI</div>
-                                <p className="aiSummary__muteText">
-                                  ⚠️ Belum cukup data untuk membuat ringkasan otomatis. Minimal 4 review diperlukan. Saat ini hanya ada {ai.reviews_count} ulasan dari pengguna.
-                                </p>
-                              </div>
-                            );
-                          }
                           return (
                             <div className="aiSummary aiSummary--muted">
                               <div className="aiSummary__muteLabel">✦ Ringkasan AI</div>
                               <p className="aiSummary__muteText">
-                                🔌 Ringkasan tidak tersedia saat ini. Kami mengalami gangguan teknis. Silakan coba lagi nanti.
+                                ⚠️ Belum cukup data untuk membuat ringkasan otomatis. Minimal 4 review diperlukan. Saat ini hanya ada {reviewCount} ulasan dari pengguna.
                               </p>
                             </div>
                           );
